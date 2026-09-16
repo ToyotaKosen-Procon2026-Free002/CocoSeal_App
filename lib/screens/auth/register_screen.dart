@@ -95,7 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
         // 4. バックエンドのユーザー情報を更新して role を保存
         // ※ ApiService に role を渡せるよう拡張している場合の処理例
-        await ApiService.updateUserProfile(null, email, role: roleValue);
+        await ApiService.updateUserProfile(null, email, roleValue);
 
         if (!mounted) return;
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../api_service.dart';
 
 class ChildRegisterScreen extends StatefulWidget {
   final List<String> existingDevices;
@@ -14,8 +14,6 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _deviceIdController = TextEditingController();
 
-  String _selectedEmoji = '⚽';
-  final List<String> _emojiOptions = ['⚽', '🍉', '🍎', '🐱', '🚗', '🍓', '🐙'];
   String? _errorMessage;
   bool _isLoading = false;
 
@@ -25,17 +23,16 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
     });
 
     final name = _nameController.text.trim();
-    // IDの表記揺れ防止のため大文字に統一 (例: esp-0001 -> ESP-0001)
-    final deviceId = _deviceIdController.text.trim().toUpperCase();
+    final device_id = _deviceIdController.text.trim().toUpperCase();
 
-    if (name.isEmpty || deviceId.isEmpty) {
+    if (name.isEmpty || device_id.isEmpty) {
       setState(() {
         _errorMessage = '表示名とデバイスIDを入力してください';
       });
       return;
     }
 
-    if (widget.existingDevices.contains(deviceId)) {
+    if (widget.existingDevices.contains(device_id)) {
       setState(() {
         _errorMessage = 'この子機は既に登録されています';
       });
@@ -47,33 +44,28 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
     });
 
     try {
-      final docRef = FirebaseFirestore.instance.collection('children').doc(deviceId);
-      final docSnapshot = await docRef.get();
-
-      // 指定したIDのドキュメントがFirestoreに存在するかチェック
-      if (!docSnapshot.exists) {
-        setState(() {
-          _errorMessage = '指定されたデバイスID（$deviceId）が存在しません';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // 名前と絵文字を上書き保存（merge: true で coins など他のフィールドを保持）
-      await docRef.set({
-        'name': name,
-        'emoji': _selectedEmoji,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      // サーバーAPIを呼び出してデバイス（deviceId）のみを登録
+      final success = await ApiService.registerChild(device_id);
 
       if (!mounted) return;
 
-      Navigator.pop(context, true);
+      if (success) {
+        Navigator.pop(context, true);
+      } else {
+        setState(() {
+          _errorMessage = '指定されたデバイスID（$device_id）が存在しないか、登録できません';
+        });
+      }
     } catch (e) {
       setState(() {
-        _errorMessage = '登録に失敗しました: $e';
-        _isLoading = false;
+        _errorMessage = '通信エラーが発生しました: $e';
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -117,33 +109,9 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
               TextField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  hintText: 'いちろう',
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-              ),
-
-              const SizedBox(height: 20),
-
-              const Text('アイコンを選ぶ', style: TextStyle(color: Colors.grey, fontSize: 13)),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                value: _selectedEmoji,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                items: _emojiOptions.map((emoji) {
-                  return DropdownMenuItem<String>(
-                    value: emoji,
-                    child: Center(
-                      child: Text(emoji, style: const TextStyle(fontSize: 22)),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedEmoji = val);
-                },
               ),
 
               const SizedBox(height: 20),
@@ -153,7 +121,6 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
               TextField(
                 controller: _deviceIdController,
                 decoration: InputDecoration(
-                  hintText: 'ESP-0001',
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),

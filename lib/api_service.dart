@@ -30,7 +30,8 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>?> updateUserProfile(String? displayName, String? email, {String? role}) async {
+//　新規会員登録
+  static Future<Map<String, dynamic>?> updateUserProfile(String? displayName, String? email, String? role) async {
     final url = Uri.parse('$baseUrl/users/me');
     final headers = await _getHeaders();
 
@@ -47,6 +48,55 @@ class ApiService {
       return jsonDecode(decodedBody) as Map<String, dynamic>;
     } else {
       print('API Error: ${response.statusCode} - ${response.body}');
+      return null;
+    }
+  }
+
+/// 子機の登録
+  static Future<bool> registerChild(String deviceId) async {
+    final url = Uri.parse('$baseUrl/users/device').replace(
+      queryParameters: {
+        'device_id': deviceId,
+      },
+    );
+    final headers = await _getHeaders();
+
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        print('API Error: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Network Error: $e');
+      return false;
+    }
+  }
+
+  /// ログインユーザーの登録済みデバイス一覧を取得
+  static Future<List<Map<String, dynamic>>?> fetchUserDevices() async {
+    final url = Uri.parse('$baseUrl/users/devices');
+    final headers = await _getHeaders();
+
+    try {
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final List<dynamic> list = jsonDecode(decodedBody);
+        return list.cast<Map<String, dynamic>>();
+      } else {
+        print('API Error: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Network Error: $e');
       return null;
     }
   }
