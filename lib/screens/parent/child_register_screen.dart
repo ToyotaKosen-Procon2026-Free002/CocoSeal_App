@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
+
 import '../../api_service.dart';
 
 class ChildRegisterScreen extends StatefulWidget {
   final List<String> existingDevices;
 
-  const ChildRegisterScreen({super.key, required this.existingDevices});
+  const ChildRegisterScreen({
+    super.key,
+    required this.existingDevices,
+  });
+
 
   @override
-  State<ChildRegisterScreen> createState() => _ChildRegisterScreenState();
+  State<ChildRegisterScreen> createState() =>
+      _ChildRegisterScreenState();
 }
 
 class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
@@ -18,21 +24,27 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
   bool _isLoading = false;
 
   Future<void> _handleRegister() async {
+    final name = _nameController.text.trim();
+
+    // UUIDは大文字へ変換せず、サーバーに登録された値のまま送信する。
+    final deviceId = _deviceIdController.text.trim();
+
     setState(() {
       _errorMessage = null;
     });
 
-    final name = _nameController.text.trim();
-    final device_id = _deviceIdController.text.trim().toUpperCase();
-
-    if (name.isEmpty || device_id.isEmpty) {
+    if (name.isEmpty || deviceId.isEmpty) {
       setState(() {
         _errorMessage = '表示名とデバイスIDを入力してください';
       });
       return;
     }
 
-    if (widget.existingDevices.contains(device_id)) {
+    final alreadyRegistered = widget.existingDevices.any(
+      (id) => id.trim() == deviceId,
+    );
+
+    if (alreadyRegistered) {
       setState(() {
         _errorMessage = 'この子機は既に登録されています';
       });
@@ -44,21 +56,28 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
     });
 
     try {
-      // サーバーAPIを呼び出してデバイス（deviceId）のみを登録
-      final success = await ApiService.registerChild(device_id);
+      await ApiService.registerChild(deviceId);
+
+      await ApiService.updateChildName(
+        deviceId: deviceId,
+        name: name,
+      );
 
       if (!mounted) return;
 
-      if (success) {
-        Navigator.pop(context, true);
-      } else {
-        setState(() {
-          _errorMessage = '指定されたデバイスID（$device_id）が存在しないか、登録できません';
-        });
-      }
-    } catch (e) {
+      // 前の画面で子機一覧をAPIから再取得する。
+      Navigator.pop(context, true);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+
       setState(() {
-        _errorMessage = '通信エラーが発生しました: $e';
+        _errorMessage = error.message;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _errorMessage = '通信中にエラーが発生しました: $error';
       });
     } finally {
       if (mounted) {
@@ -83,74 +102,133 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: TextButton.icon(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios, size: 16, color: Colors.grey),
-          label: const Text('戻る', style: TextStyle(color: Colors.grey, fontSize: 14)),
-        ),
         leadingWidth: 90,
+        leading: TextButton.icon(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          icon: const Icon(
+            Icons.arrow_back_ios,
+            size: 16,
+            color: Colors.grey,
+          ),
+          label: const Text(
+            '戻る',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 14,
+            ),
+          ),
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 12,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Center(
                 child: Text(
                   '新しい子機を登録',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 30),
-
-              const Text('こどもの表示名', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const Text(
+                'こどもの表示名',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: _nameController,
+                enabled: !_isLoading,
+                textInputAction: TextInputAction.next,
                 decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintText: '例：たろう',
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              const Text('子機のデバイスID', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const Text(
+                '子機のデバイスID',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: _deviceIdController,
+                enabled: !_isLoading,
+                autocorrect: false,
+                enableSuggestions: false,
+                textCapitalization: TextCapitalization.none,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) {
+                  if (!_isLoading) {
+                    _handleRegister();
+                  }
+                },
                 decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintText: '子機のデバイスIDを入力',
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
-
               if (_errorMessage != null) ...[
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
-
               const SizedBox(height: 40),
-
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleRegister,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
+                    disabledBackgroundColor: Colors.black54,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
-                  onPressed: _isLoading ? null : _handleRegister,
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : const Text(
                           'この内容で登録する',
                           style: TextStyle(

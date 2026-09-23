@@ -178,7 +178,9 @@ class ChildHomeScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const PassbyCheckScreen()),
+                                  builder: (_) => PassbyCheckScreen(
+                                    deviceId: childId ?? '',
+                                  )),
                             );
                           },
                         ),
@@ -211,8 +213,9 @@ class ChildHomeScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) =>
-                                      const SealDictionaryScreen()),
+                                  builder: (_) => SealDictionaryScreen(
+                                    deviceId: childId ?? '',
+                                  )),
                             );
                           },
                         ),
@@ -223,7 +226,9 @@ class ChildHomeScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const SealBookScreen()),
+                                  builder: (_) => SealBookScreen(
+                                    deviceId: childId ?? '',
+                                  )),
                             );
                           },
                         ),

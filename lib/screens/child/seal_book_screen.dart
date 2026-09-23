@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../api_service.dart';
+import '../../models/seal.dart';
 
 class SealBookScreen extends StatefulWidget {
-  const SealBookScreen({super.key});
+  final String deviceId;
+
+  const SealBookScreen({super.key, required this.deviceId});
 
   @override
   State<SealBookScreen> createState() => _SealBookScreenState();
@@ -9,23 +13,53 @@ class SealBookScreen extends StatefulWidget {
 
 class PlacedSticker {
   final String id;
-  final String emoji;
+  final Seal seal;
   Offset position;
 
-  PlacedSticker({required this.id, required this.emoji, required this.position});
+  PlacedSticker({required this.id, required this.seal, required this.position});
 }
 
 class _SealBookScreenState extends State<SealBookScreen> {
-  final List<String> _myStickers = ['🐙', '🕊️', '🦉', '🌸', '👑', '🐻', '⭐', '🎈'];
+  late Future<List<Seal>> _myStickersFuture;
   final List<PlacedSticker> _placedStickers = [];
   Color _pageBgColor = const Color(0xFFFFF8E1); // 淡いクリーム色
 
-  void _addStickerToPage(String emoji) {
+  @override
+  void initState() {
+    super.initState();
+    _myStickersFuture = _loadOwnedSeals();
+  }
+
+  Future<List<Seal>> _loadOwnedSeals() async {
+    final collection = await ApiService.fetchSealCollection(widget.deviceId);
+    final ownedIds = collection.owned.map((item) => item.sealId).toSet();
+    return collection.catalog.where((seal) => ownedIds.contains(seal.id)).toList();
+  }
+
+  String _imageUrl(String path) {
+    final uri = Uri.tryParse(path);
+    if (uri == null) return '';
+    return uri.hasScheme ? uri.toString() : Uri.parse(ApiService.baseUrl).resolve(path).toString();
+  }
+
+  Widget _sealImage(Seal seal, {double size = 48}) {
+    final url = _imageUrl(seal.imagePath);
+    if (url.isEmpty) return Icon(Icons.stars, size: size, color: Colors.pinkAccent);
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => Icon(Icons.stars, size: size, color: Colors.pinkAccent),
+    );
+  }
+
+  void _addStickerToPage(Seal seal) {
     setState(() {
       _placedStickers.add(
         PlacedSticker(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          emoji: emoji,
+          seal: seal,
           position: const Offset(120, 180),
         ),
       );
@@ -109,10 +143,7 @@ class _SealBookScreenState extends State<SealBookScreen> {
                             const SnackBar(content: Text('シールをはがしました'), duration: Duration(seconds: 1)),
                           );
                         },
-                        child: Text(
-                          sticker.emoji,
-                          style: const TextStyle(fontSize: 48),
-                        ),
+                        child: _sealImage(sticker.seal),
                       ),
                     );
                   }),
@@ -139,25 +170,37 @@ class _SealBookScreenState extends State<SealBookScreen> {
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
-                  height: 60,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _myStickers.length,
-                    itemBuilder: (context, index) {
-                      final emoji = _myStickers[index];
-                      return GestureDetector(
-                        onTap: () => _addStickerToPage(emoji),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 12),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0F0F0),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text(emoji, style: const TextStyle(fontSize: 32)),
-                          ),
-                        ),
+                  height: 70,
+                  child: FutureBuilder<List<Seal>>(
+                    future: _myStickersFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Text('シールを取得できませんでした: ${snapshot.error}');
+                      }
+                      final seals = snapshot.data ?? const <Seal>[];
+                      if (seals.isEmpty) return const Text('もっているシールはありません');
+                      return ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: seals.length,
+                        itemBuilder: (context, index) {
+                          final seal = seals[index];
+                          return GestureDetector(
+                            onTap: () => _addStickerToPage(seal),
+                            child: Container(
+                              width: 62,
+                              margin: const EdgeInsets.only(right: 12),
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F0F0),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: _sealImage(seal, size: 46),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),

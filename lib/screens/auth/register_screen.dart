@@ -91,11 +91,11 @@ class _RegisterScreenState extends State<RegisterScreen>
         await ApiService.fetchUserProfile();
 
         // 3. 画面のタブ選択に応じて role を定義 ('0': 保護者, '1': 親機)
-        final String roleValue = _selectedRole == 'parent' ? '0' : '1';
+        final int roleValue = _selectedRole == 'parent' ? 0 : 1;
 
         // 4. バックエンドのユーザー情報を更新して role を保存
         // ※ ApiService に role を渡せるよう拡張している場合の処理例
-        await ApiService.updateUserProfile(null, email, roleValue);
+        await ApiService.updateUserProfile(email: email, role: roleValue);
 
         if (!mounted) return;
 

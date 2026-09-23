@@ -1,64 +1,82 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-class PassbyCheckScreen extends StatelessWidget {
-  const PassbyCheckScreen({super.key});
+import '../../api_service.dart';
+import '../../models/nearby_communication.dart';
 
-  // ポップアップを表示する関数
-  void _showDetailDialog(BuildContext context, Map<String, dynamic> data) {
-    // Timestampを文字列に変換
-    final Timestamp? timestamp = data['timestamp'] as Timestamp?;
-    final DateTime dateTime = timestamp?.toDate() ?? DateTime.now();
-    final String formattedDate = 
-        '${dateTime.year}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+class PassbyCheckScreen extends StatefulWidget {
+  final String deviceId;
 
-    showDialog(
+  const PassbyCheckScreen({super.key, required this.deviceId});
+
+  @override
+  State<PassbyCheckScreen> createState() => _PassbyCheckScreenState();
+}
+
+class _PassbyCheckScreenState extends State<PassbyCheckScreen> {
+  late Future<List<NearbyCommunication>> _logsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  void _reload() {
+    final endAt = DateTime.now();
+    setState(() {
+      _logsFuture = ApiService.fetchNearbyCommunications(
+        deviceId: widget.deviceId,
+        startAt: endAt.subtract(const Duration(days: 30)),
+        endAt: endAt,
+      );
+    });
+  }
+
+  String _formatDate(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${local.year}/${two(local.month)}/${two(local.day)} '
+        '${two(local.hour)}:${two(local.minute)}';
+  }
+
+  void _showDetailDialog(NearbyCommunication log) {
+    showDialog<void>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          contentPadding: const EdgeInsets.all(20),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.grey),
-                  onPressed: () => Navigator.of(context).pop(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.grey),
+                onPressed: () => Navigator.pop(context),
               ),
-              const SizedBox(height: 8),
-              _buildPopupRow('くれたともだち', data['partner_name'] ?? '不明'),
-              _buildPopupRow('シールのなまえ', data['seal_name'] ?? 'なし'),
-              _buildPopupRow('すれちがったじかん', formattedDate),
-              _buildPopupRow('すれちがったばしょ', data['location_name'] ?? '不明'),
-              _buildPopupRow('かくとくコイン', '${data['coins_earned'] ?? 0}コイン'),
-            ],
-          ),
-        );
-      },
+            ),
+            _popupRow(
+              log.partnerIsGateway ? '通過した親機' : 'すれちがった相手',
+              log.partnerId,
+            ),
+            _popupRow('すれちがった時間', _formatDate(log.timeStamp)),
+            _popupRow('もらったシール', log.receiveSealId ?? 'なし'),
+            _popupRow('渡したシール', log.sendSealId ?? 'なし'),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildPopupRow(String label, String value) {
+  Widget _popupRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          SizedBox(
-            width: 110,
-            child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.black87)),
-          ),
+          SizedBox(width: 110, child: Text(label)),
           Container(width: 1, height: 16, color: Colors.grey.shade400),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
+            child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -69,75 +87,52 @@ class PassbyCheckScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('すれちがいりれき', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: const Text('すれちがいりれき'),
         backgroundColor: Colors.white,
-        elevation: 1,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.grey),
-          onPressed: () => Navigator.pop(context),
-        ),
+        actions: [
+          IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
+        ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        // FirestoreからESP-0001のすれ違いログを取得（新しい順）
-        stream: FirebaseFirestore.instance
-            .collection('children')
-            .doc('ESP-0001')
-            .collection('actions')
-            .orderBy('timestamp', descending: true)
-            .snapshots(),
+      body: FutureBuilder<List<NearbyCommunication>>(
+        future: _logsFuture,
         builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Center(child: Text('エラーが発生しました'));
-          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
-          final docs = snapshot.data?.docs ?? [];
-
-          if (docs.isEmpty) {
-            return const Center(child: Text('すれちがいりれきがありません'));
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('履歴を取得できませんでした\n${snapshot.error}',
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  ElevatedButton(onPressed: _reload, child: const Text('再試行')),
+                ],
+              ),
+            );
           }
-
-          return GridView.builder(
+          final logs = snapshot.data ?? const <NearbyCommunication>[];
+          logs.sort((a, b) => b.timeStamp.compareTo(a.timeStamp));
+          if (logs.isEmpty) {
+            return const Center(child: Text('過去30日間のすれちがい履歴はありません'));
+          }
+          return ListView.separated(
             padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, // 2列で表示
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.85,
-            ),
-            itemCount: docs.length,
+            itemCount: logs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
-
-              return GestureDetector(
-                onTap: () => _showDetailDialog(context, data),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // シールやアバターの画像枠（ダミーアイコン）
-                        const Icon(Icons.stars, size: 50, color: Colors.pinkAccent),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const CircleAvatar(radius: 8, backgroundColor: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(
-                              data['partner_name'] ?? 'ななし',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+              final log = logs[index];
+              return Card(
+                child: ListTile(
+                  onTap: () => _showDetailDialog(log),
+                  leading: Icon(
+                    log.partnerIsGateway ? Icons.location_on : Icons.people,
+                    color: Colors.pinkAccent,
                   ),
+                  title: Text(log.partnerId),
+                  subtitle: Text(_formatDate(log.timeStamp)),
+                  trailing: const Icon(Icons.chevron_right),
                 ),
               );
             },

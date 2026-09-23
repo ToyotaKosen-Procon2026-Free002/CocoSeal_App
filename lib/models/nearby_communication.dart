@@ -26,7 +26,9 @@ class NearbyCommunication {
       partnerIsGateway: json['partner_is_gateway'] as bool,
       sendSealId: json['send_seal_id'] as String?,
       receiveSealId: json['receive_seal_id'] as String?,
-      timeStamp: DateTime.parse(json['time_stamp'] as String),
+      timeStamp: DateTime.parse(
+        (json['timestamp'] ?? json['time_stamp']) as String,
+      ),
     );
   }
 }

@@ -38,6 +38,8 @@ dependencies:
   firebase_auth: ^6.5.7
   firebase_messaging: ^16.5.0
   cloud_firestore: ^6.8.0
+  http: ^1.2.2
+  google_maps_flutter: ^2.18.1
 
 dev_dependencies:
   flutter_test:
