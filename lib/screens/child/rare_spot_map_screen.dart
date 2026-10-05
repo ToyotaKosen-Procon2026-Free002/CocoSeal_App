@@ -13,6 +13,7 @@ class RareSpotMapScreen extends StatefulWidget {
 
 class _RareSpotMapScreenState extends State<RareSpotMapScreen> {
   late Future<List<Gateway>> _gatewaysFuture;
+  Map<String, String> _sealNames = const {};
 
   static const LatLng _defaultPosition = LatLng(
     35.681236,
@@ -28,6 +29,12 @@ class _RareSpotMapScreenState extends State<RareSpotMapScreen> {
   void _loadGateways() {
     setState(() {
       _gatewaysFuture = ApiService.fetchAllGateways();
+    });
+    ApiService.fetchSeals().then((seals) {
+      if (!mounted) return;
+      setState(() {
+        _sealNames = {for (final seal in seals) seal.id: seal.name};
+      });
     });
   }
 
@@ -49,7 +56,7 @@ class _RareSpotMapScreenState extends State<RareSpotMapScreen> {
               title: gateway.name,
               snippet: gateway.distributeSealId == null
                   ? '配布シール情報なし'
-                  : '配布シール：${gateway.distributeSealId}',
+                  : '配布シール：${_sealNames[gateway.distributeSealId] ?? '読み込み中'}',
             ),
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueViolet,

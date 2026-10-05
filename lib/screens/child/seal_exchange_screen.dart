@@ -1,229 +1,293 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../api_service.dart';
+import '../../models/seal.dart';
+import '../../widgets/seal_image.dart';
+
 class SealExchangeScreen extends StatefulWidget {
-  const SealExchangeScreen({super.key});
+  final String deviceId;
+  final int initialCoins;
+  final ValueChanged<int>? onCoinsChanged;
+
+  const SealExchangeScreen({
+    super.key,
+    required this.deviceId,
+    required this.initialCoins,
+    this.onCoinsChanged,
+  });
 
   @override
   State<SealExchangeScreen> createState() => _SealExchangeScreenState();
 }
 
 class _SealExchangeScreenState extends State<SealExchangeScreen> {
-  // 所持コイン数（Stateで管理）
-  int userCoins = 38;
+  static const _purple = Color(0xFF7447C8);
+  late int userCoins;
+  late Future<List<SealPack>> _packsFuture;
+  String? _openingPackId;
+
+  @override
+  void initState() {
+    super.initState();
+    userCoins = widget.initialCoins;
+    _packsFuture = ApiService.fetchSealPacks();
+  }
+
+  int _sealCount(SealPack pack) {
+    final text = '${pack.name} ${pack.description}'.toLowerCase();
+    return text.contains('スペシャル') || text.contains('special') ? 5 : 3;
+  }
+
+  Future<void> _refreshCoins() async {
+    final devices = await ApiService.fetchUserDevices();
+    for (final device in devices) {
+      if (device.id.toLowerCase() == widget.deviceId.toLowerCase()) {
+        if (!mounted) return;
+        setState(() => userCoins = device.coins);
+        widget.onCoinsChanged?.call(device.coins);
+        return;
+      }
+    }
+  }
+
+  Future<void> _openPack(SealPack pack) async {
+    final count = _sealCount(pack);
+    if (userCoins < pack.oncePrice) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('コインがたりないよ！'),
+          content: Text('必要：${pack.oncePrice}コイン　いま：$userCoinsコイン'),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('もどる'))],
+        ),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${pack.name}と交換しますか？'),
+        content: Text('${pack.oncePrice}コインで$count枚のシールを引きます'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('もどる')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('はい')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _openingPackId = pack.id);
+    try {
+      final seals = await ApiService.playSealPack(
+        packId: pack.id,
+        count: count,
+        deviceId: widget.deviceId,
+      );
+      await _refreshCoins();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _SealRevealDialog(results: seals),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _openingPackId = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF7F3FF),
       appBar: AppBar(
-        title: const Text(
-          'シールパックこうかん',
-          style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        title: const Text('シールパックこうかん'),
+        backgroundColor: _purple,
+        foregroundColor: Colors.white,
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-            // 所持コイン表示
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.black12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('🪙 ', style: TextStyle(fontSize: 18)),
-                  Text(
-                    '$userCoins枚',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // パック一覧
-            Expanded(
-              child: ListView(
+      body: Column(children: [
+        const SizedBox(height: 16),
+        Chip(
+          avatar: const Icon(Icons.monetization_on_rounded, color: Color(0xFFFFB300)),
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: Color(0xFFD8C5FF)),
+          label: Text('$userCoins コイン', style: const TextStyle(fontWeight: FontWeight.bold, color: _purple)),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: FutureBuilder<List<SealPack>>(
+            future: _packsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('シールパックを取得できませんでした\n${snapshot.error}', textAlign: TextAlign.center));
+              }
+              final packs = snapshot.data ?? const <SealPack>[];
+              if (packs.isEmpty) return const Center(child: Text('開催中のシールパックはありません'));
+              return ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: [
-                  _buildPackCard(
-                    title: '♡  おともだちパック',
-                    description: 'ノーマルシールが３枚入ってるよ',
-                    requiredCoins: 10,
-                    itemCount: 3,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPackCard(
-                    title: '★  キラキラパック',
-                    description: 'めったに手に入らないレアシールが\nかならず１枚当たる！',
-                    requiredCoins: 50, // コイン不足のテスト用（50枚）
-                    itemCount: 5,
-                  ),
-                ],
-              ),
-            ),
-          ],
+                itemCount: packs.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                itemBuilder: (context, index) => _packCard(packs[index]),
+              );
+            },
+          ),
         ),
-      ),
+      ]),
     );
   }
 
-  // パック表示カード
-  Widget _buildPackCard({
-    required String title,
-    required String description,
-    required int requiredCoins,
-    required int itemCount,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.black26),
-        borderRadius: BorderRadius.circular(8),
+  Widget _packCard(SealPack pack) {
+    final count = _sealCount(pack);
+    final busy = _openingPackId != null;
+    return Card(
+      color: Colors.white,
+      surfaceTintColor: const Color(0xFFE8DEFF),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0xFFD8C5FF)),
       ),
-      child: Column(
-        children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(children: [
+          Text(pack.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(description, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-          const SizedBox(height: 12),
-          Text('$itemCountまい入り : 必要なコイン 🪙 $requiredCoins枚', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(pack.description, textAlign: TextAlign.center),
+          const SizedBox(height: 8),
+          Text('$countまい入り・${pack.oncePrice}コイン', style: const TextStyle(color: _purple, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => _showExchangeDialog(title, requiredCoins),
+              onPressed: busy ? null : () => _openPack(pack),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFC0CB), // ピンク
-                elevation: 0,
+                backgroundColor: _purple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('このパックとこうかんする', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+              child: _openingPackId == pack.id
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('このパックとこうかんする'),
             ),
           ),
-        ],
+        ]),
       ),
     );
   }
+}
 
-  // 交換確認モーダル（コイン不足判定＆ボタン色切り替え付き）
-  void _showExchangeDialog(String packTitle, int cost) {
-    bool hasEnoughCoins = userCoins >= cost;
+class _SealRevealDialog extends StatefulWidget {
+  final List<Seal> results;
+  const _SealRevealDialog({required this.results});
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '$costコインで$packTitleと\nこうかんしますか？',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                // コイン不足時のアラート表示
-                if (!hasEnoughCoins) ...[
-                  const SizedBox(height: 12),
-                  const Text(
-                    'コインがたりないよ！',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context); // ダイアログを閉じる
-                        if (hasEnoughCoins) {
-                          setState(() {
-                            userCoins -= cost; // コイン減算
-                          });
-                          _showResultDialog(); // 獲得結果モーダルを表示
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        // コインが足りない時は「もどる」と同じグレー色にする
-                        backgroundColor: hasEnoughCoins
-                            ? const Color(0xFFFFC0CB)
-                            : const Color(0xFFE0E0E0),
-                        elevation: 0,
-                      ),
-                      child: const Text('はい', style: TextStyle(color: Colors.black87)),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE0E0E0),
-                        elevation: 0,
-                      ),
-                      child: const Text('もどる', style: TextStyle(color: Colors.black87)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  @override
+  State<_SealRevealDialog> createState() => _SealRevealDialogState();
+}
+
+class _SealRevealDialogState extends State<_SealRevealDialog> with SingleTickerProviderStateMixin {
+  late final AnimationController _glowController;
+  Timer? _timer;
+  int _visibleCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 550),
+      lowerBound: 0.94,
+      upperBound: 1.06,
+    )..repeat(reverse: true);
+    if (widget.results.isNotEmpty) {
+      _timer = Timer.periodic(const Duration(milliseconds: 330), (timer) {
+        if (!mounted) return;
+        if (_visibleCount >= widget.results.length) {
+          timer.cancel();
+          _glowController.stop();
+          return;
+        }
+        setState(() => _visibleCount++);
+      });
+    }
   }
 
-  // 獲得結果モーダル
-  void _showResultDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('ゲットしたシール', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(3, (index) {
-                    return const Column(
-                      children: [
-                        Text('🪼', style: TextStyle(fontSize: 36)),
-                        SizedBox(height: 4),
-                        Text('★★★', style: TextStyle(fontSize: 10, color: Colors.amber)),
-                        Text('ぶかぶかくらげ', style: TextStyle(fontSize: 10, color: Colors.black87)),
-                      ],
-                    );
-                  }),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE0E0E0),
-                    elevation: 0,
-                  ),
-                  child: const Text('とじる', style: TextStyle(color: Colors.black87)),
-                ),
-              ],
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _glowController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFFFBF9FF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Column(children: [
+        ScaleTransition(scale: _glowController, child: const Icon(Icons.auto_awesome_rounded, size: 44, color: Color(0xFF7447C8))),
+        const SizedBox(height: 6),
+        Text(_visibleCount == widget.results.length ? 'ゲットしたシール！' : 'パックをオープン！'),
+      ]),
+      content: widget.results.isEmpty
+          ? const Text('シールを取得できませんでした')
+          : SizedBox(
+              width: 420,
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (var index = 0; index < _visibleCount; index++)
+                    TweenAnimationBuilder<double>(
+                      key: ValueKey('reveal-$index'),
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 420),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) => Opacity(
+                        opacity: value.clamp(0.0, 1.0).toDouble(),
+                        child: Transform.scale(scale: value, child: child),
+                      ),
+                      child: _RevealedSeal(seal: widget.results[index]),
+                    ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+      actions: [
+        TextButton(
+          onPressed: _visibleCount == widget.results.length ? () => Navigator.pop(context) : null,
+          child: const Text('とじる'),
+        ),
+      ],
+    );
+  }
+}
+
+class _RevealedSeal extends StatelessWidget {
+  final Seal seal;
+  const _RevealedSeal({required this.seal});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 90,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: seal.rarity == 1 ? const Color(0xFFFFC857) : const Color(0xFFD8C5FF), width: seal.rarity == 1 ? 2 : 1),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        SealImage(seal: seal, size: 68),
+        Text(seal.rarity == 1 ? '★★' : '★', style: const TextStyle(color: Color(0xFFFFB000))),
+        Text(seal.name, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ]),
     );
   }
 }

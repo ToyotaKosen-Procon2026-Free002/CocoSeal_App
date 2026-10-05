@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../app_config.dart';
 import 'weekly_mission_manager.dart';
 
 class MissionScreen extends StatefulWidget {
   final String childId;
+  final ValueChanged<int>? onRewardClaimed;
 
-  const MissionScreen({super.key, this.childId = 'ESP-0001'});
+  const MissionScreen({
+    super.key,
+    this.childId = 'ESP-0001',
+    this.onRewardClaimed,
+  });
 
   @override
   State<MissionScreen> createState() => _MissionScreenState();
@@ -22,7 +28,9 @@ class _MissionScreenState extends State<MissionScreen> {
   @override
   void initState() {
     super.initState();
-    _missionManager.checkAndRefreshWeeklyMissions(widget.childId);
+    if (!AppConfig.useDemoData) {
+      _missionManager.checkAndRefreshWeeklyMissions(widget.childId);
+    }
   }
 
   // ★ コインを加算する関数
@@ -53,6 +61,7 @@ class _MissionScreenState extends State<MissionScreen> {
     await _addCoinsToChild(reward);
 
     if (!mounted) return;
+    widget.onRewardClaimed?.call(reward);
     _showRewardDialog(reward);
   }
 
@@ -146,7 +155,9 @@ class _MissionScreenState extends State<MissionScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
-      body: StreamBuilder<QuerySnapshot>(
+      body: AppConfig.useDemoData
+          ? _DemoWeeklyMissionView(onRewardClaimed: widget.onRewardClaimed)
+          : StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('children')
             .doc(widget.childId)
@@ -161,7 +172,11 @@ class _MissionScreenState extends State<MissionScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          // 以前Firestoreに保存されたクイズも画面には表示しない。
+          final docs = (snapshot.data?.docs ?? []).where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return data['type'] != 'quiz';
+          }).toList();
 
           if (docs.isEmpty) {
             return const Center(child: Text('ミッションを準備中...'));
@@ -399,4 +414,130 @@ class _MissionScreenState extends State<MissionScreen> {
       child: const Text('クリアずみ', style: TextStyle(fontSize: 12, color: Colors.black54)),
     );
   }
+}
+
+class _DemoWeeklyMissionView extends StatefulWidget {
+  final ValueChanged<int>? onRewardClaimed;
+
+  const _DemoWeeklyMissionView({this.onRewardClaimed});
+
+  @override
+  State<_DemoWeeklyMissionView> createState() =>
+      _DemoWeeklyMissionViewState();
+}
+
+class _DemoWeeklyMissionViewState extends State<_DemoWeeklyMissionView> {
+  final List<Map<String, dynamic>> _missions = [
+    {
+      'title': 'おともだちと 10回すれちがおう！',
+      'current': 7,
+      'max': 10,
+      'reward': 10,
+      'claimed': false,
+    },
+    {
+      'title': 'バッテリーを まんたんにしよう！',
+      'current': 1,
+      'max': 1,
+      'reward': 5,
+      'claimed': false,
+    },
+    {
+      'title': '親機のちかくを 5回とおろう！',
+      'current': 5,
+      'max': 5,
+      'reward': 50,
+      'claimed': false,
+    },
+  ];
+
+  void _claim(int index) {
+    final mission = _missions[index];
+    if ((mission['current'] as int) < (mission['max'] as int) ||
+        mission['claimed'] == true) {
+      return;
+    }
+    setState(() => mission['claimed'] = true);
+    final reward = mission['reward'] as int;
+    widget.onRewardClaimed?.call(reward);
+    _showReward(reward);
+  }
+
+  void _showReward(int coins) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ミッションたっせい！'),
+        content: Text('$coins枚のコインをゲット！'),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('やったー！'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        for (var index = 0; index < _missions.length; index++)
+          _missionCard(index),
+      ],
+    );
+  }
+
+  Widget _missionCard(int index) {
+    final mission = _missions[index];
+    final current = mission['current'] as int;
+    final max = mission['max'] as int;
+    final complete = current >= max;
+    final claimed = mission['claimed'] as bool;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    mission['title'] as String,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Text('🪙 ${mission['reward']}枚'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: (current / max).clamp(0.0, 1.0).toDouble(),
+              color: const Color(0xFFE47AB1),
+              backgroundColor: const Color(0xFFF0E7F5),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text('$current / $max'),
+                const Spacer(),
+                FilledButton(
+                  onPressed: complete && !claimed ? () => _claim(index) : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFE47AB1),
+                  ),
+                  child: Text(claimed ? 'うけとり済み' : 'うけとる'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 }

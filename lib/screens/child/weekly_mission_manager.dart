@@ -51,28 +51,7 @@ class WeeklyMissionManager {
     int weeklyPassTarget = 10;   // 今週は10回すれ違い！（例: 10枚）
     int weeklyParentTarget = 5;   // 今週は親機を5回通過！（例: 50枚）
 
-    // 1. 今週のクイズ（quiz_collection からランダム1問）
-    final quizSnapshot = await _firestore.collection('quiz_collection').get();
-    if (quizSnapshot.docs.isNotEmpty) {
-      final quizzes = quizSnapshot.docs;
-      quizzes.shuffle();
-      final quizData = quizzes.first.data();
-
-      await childMissionsRef.doc('mission_quiz').set({
-        'title': '【こんしゅうのクイズ】${quizData['question']}',
-        'type': 'quiz',
-        'options': quizData['options'],
-        'correctAnswer': quizData['correctAnswer'],
-        'explanation': quizData['explanation'] ?? '',
-        'reward': quizData['reward'] ?? 10,
-        'current': 0,
-        'max': 1,
-        'isCompleted': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
-
-    // 2. すれ違いミッション（回数 × 1枚）
+    // 1. すれ違いミッション（回数 × 1枚）
     await childMissionsRef.doc('mission_pass').set({
       'title': 'おともだちと $weeklyPassTarget 回すれちがおう！',
       'type': 'pass',
@@ -83,7 +62,7 @@ class WeeklyMissionManager {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // 3. 充電満タンミッション（5枚）
+    // 2. 充電満タンミッション（5枚）
     await childMissionsRef.doc('mission_battery').set({
       'title': 'バッテリーを まんたんにしよう！',
       'type': 'battery',
@@ -94,7 +73,7 @@ class WeeklyMissionManager {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // 4. 親機を通るミッション（回数 × 10枚）
+    // 3. 親機を通るミッション（回数 × 10枚）
     await childMissionsRef.doc('mission_parent').set({
       'title': 'おうち（親機）の ちかくを $weeklyParentTarget 回とおろう！',
       'type': 'parent_station',

@@ -25,4 +25,19 @@ class Device {
       lastTimestamp: json['last_timestamp'] as String? ?? '',
     );
   }
+
+  Device copyWith({
+    String? name,
+    int? coins,
+    double? battery,
+  }) {
+    return Device(
+      id: id,
+      owner: owner,
+      name: name ?? this.name,
+      coins: coins ?? this.coins,
+      battery: battery ?? this.battery,
+      lastTimestamp: lastTimestamp,
+    );
+  }
 }

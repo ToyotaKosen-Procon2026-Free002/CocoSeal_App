@@ -61,7 +61,7 @@ class _PinCodeDialogState extends State<PinCodeDialog> {
                 ElevatedButton(
                   onPressed: _verifyPin,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-                  child: const Text('かくにん', style: TextStyle(color: Colors.white)),
+                  child: const Text('確認', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
