@@ -56,9 +56,7 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
     });
 
     try {
-      await ApiService.registerChild(deviceId);
-
-      await ApiService.updateChildName(
+      await ApiService.registerChildWithName(
         deviceId: deviceId,
         name: name,
       );
@@ -98,9 +96,9 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF7F3FF),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF7447C8),
         elevation: 0,
         leadingWidth: 90,
         leading: TextButton.icon(
@@ -108,12 +106,12 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
           icon: const Icon(
             Icons.arrow_back_ios,
             size: 16,
-            color: Colors.grey,
+            color: Colors.white,
           ),
           label: const Text(
             '戻る',
             style: TextStyle(
-              color: Colors.grey,
+              color: Colors.white,
               fontSize: 14,
             ),
           ),
@@ -214,8 +212,8 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleRegister,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    disabledBackgroundColor: Colors.black54,
+                    backgroundColor: const Color(0xFF7447C8),
+                    disabledBackgroundColor: const Color(0xFFB39DDB),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),

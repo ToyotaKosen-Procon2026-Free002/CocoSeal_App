@@ -3,74 +3,78 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../api_service.dart';
 import '../../models/gateway.dart';
+import '../../models/seal.dart';
 
-class RareSpotMapScreen extends StatefulWidget {
-  const RareSpotMapScreen({super.key});
+class RareSpotScreen extends StatefulWidget {
+  const RareSpotScreen({super.key});
 
   @override
-  State<RareSpotMapScreen> createState() => _RareSpotMapScreenState();
+  State<RareSpotScreen> createState() => _RareSpotScreenState();
 }
 
-class _RareSpotMapScreenState extends State<RareSpotMapScreen> {
-  late Future<List<Gateway>> _gatewaysFuture;
+class _RareSpotScreenState extends State<RareSpotScreen> {
+  static const Color _purple = Color(0xFF7447C8);
+  static const LatLng _defaultCenter = LatLng(35.0824, 137.1563);
 
-  static const LatLng _defaultPosition = LatLng(
-    35.681236,
-    139.767125,
-  );
+  bool _loading = true;
+  String? _error;
+  List<Gateway> _gateways = const [];
+  Map<String, Seal> _seals = const {};
 
   @override
   void initState() {
     super.initState();
-    _loadGateways();
+    _load();
   }
 
-  void _loadGateways() {
+  Future<void> _load() async {
     setState(() {
-      _gatewaysFuture = ApiService.fetchAllGateways();
+      _loading = true;
+      _error = null;
     });
-  }
 
-  Set<Marker> _createMarkers(List<Gateway> gateways) {
-    return gateways
-        .where(
-          (gateway) =>
-              gateway.latitude != null &&
-              gateway.longitude != null,
-        )
-        .map(
-          (gateway) => Marker(
-            markerId: MarkerId(gateway.id),
-            position: LatLng(
-              gateway.latitude!,
-              gateway.longitude!,
-            ),
-            infoWindow: InfoWindow(
-              title: gateway.name,
-              snippet: gateway.distributeSealId == null
-                  ? '配布シール情報なし'
-                  : '配布シール：${gateway.distributeSealId}',
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueViolet,
-            ),
-          ),
-        )
-        .toSet();
-  }
+    try {
+      final results = await Future.wait([
+        ApiService.fetchAllGateways(),
+        ApiService.fetchSeals(),
+      ]);
 
-  LatLng _initialPosition(List<Gateway> gateways) {
-    for (final gateway in gateways) {
-      if (gateway.latitude != null &&
-          gateway.longitude != null) {
-        return LatLng(
-          gateway.latitude!,
-          gateway.longitude!,
-        );
-      }
+      final gateways = results[0] as List<Gateway>;
+      final seals = results[1] as List<Seal>;
+
+      if (!mounted) return;
+      setState(() {
+        _gateways = gateways
+            .where((g) =>
+                g.latitude != null &&
+                g.longitude != null &&
+                g.latitude != 0 &&
+                g.longitude != 0)
+            .toList();
+        _seals = {for (final seal in seals) seal.id: seal};
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
     }
+  }
 
-    return _defaultPosition;
+  Set<Marker> get _markers {
+    return _gateways.map((gateway) {
+      final seal = _seals[gateway.distributeSealId];
+      return Marker(
+        markerId: MarkerId(gateway.id),
+        position: LatLng(gateway.latitude!, gateway.longitude!),
+        infoWindow: InfoWindow(
+          title: gateway.name.trim().isEmpty ? 'レアシールスポット' : gateway.name,
+          snippet: seal == null ? '配布シール：未設定' : '配布シール：${seal.name}',
+        ),
+      );
+    }).toSet();
   }
 
   @override
@@ -78,98 +82,72 @@ class _RareSpotMapScreenState extends State<RareSpotMapScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('レアシールスポット'),
+        backgroundColor: _purple,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            onPressed: _loadGateways,
-            icon: const Icon(Icons.refresh),
-            tooltip: '再読み込み',
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: '最新の親機情報を取得',
           ),
         ],
       ),
-      body: FutureBuilder<List<Gateway>>(
-        future: _gatewaysFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'スポットを取得できませんでした',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      snapshot.error.toString(),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _loadGateways,
-                      child: const Text('再試行'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final gateways =
-              snapshot.data ?? const <Gateway>[];
-
-          final markers = _createMarkers(gateways);
-
-          return Stack(
-            children: [
-              GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: _initialPosition(gateways),
-                  zoom: 13,
-                ),
-                markers: markers,
-                mapType: MapType.normal,
-                zoomControlsEnabled: true,
-                myLocationButtonEnabled: false,
-              ),
-
-              if (markers.isEmpty)
-                Positioned(
-                  top: 16,
-                  left: 24,
-                  right: 24,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        gateways.isEmpty
-                            ? '登録されているスポットはありません'
-                            : '緯度・経度が設定されたスポットはありません',
-                        textAlign: TextAlign.center,
-                      ),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: _purple),
+            )
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '親機情報を取得できませんでした。\n$_error',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: _load,
+                          child: const Text('再試行'),
+                        ),
+                      ],
                     ),
                   ),
+                )
+              : Stack(
+                  children: [
+                    GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: _gateways.isEmpty
+                            ? _defaultCenter
+                            : LatLng(
+                                _gateways.first.latitude!,
+                                _gateways.first.longitude!,
+                              ),
+                        zoom: _gateways.isEmpty ? 12 : 14,
+                      ),
+                      markers: _markers,
+                      zoomControlsEnabled: true,
+                    ),
+                    if (_gateways.isEmpty)
+                      Positioned(
+                        left: 16,
+                        right: 16,
+                        top: 16,
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Text(
+                              '設置場所が登録されている親機はまだありません。',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-            ],
-          );
-        },
-      ),
     );
   }
 }

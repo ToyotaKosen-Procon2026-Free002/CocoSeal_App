@@ -9,34 +9,12 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
+class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  String _selectedRole = 'parent'; // 初期値は保護者 ('parent' or 'admin')
   String? _errorMessage;
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-
-    // タブが切り替わった時に _selectedRole を更新する
-    _tabController.addListener(_handleTabSelection);
-  }
-
-  void _handleTabSelection() {
-    if (_tabController.indexIsChanging ||
-        _tabController.index != (_selectedRole == 'parent' ? 0 : 1)) {
-      setState(() {
-        _selectedRole = _tabController.index == 0 ? 'parent' : 'admin';
-      });
-    }
-  }
 
   Future<void> _handleLogin() async {
     setState(() {
@@ -92,8 +70,6 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
-    _tabController.removeListener(_handleTabSelection);
-    _tabController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -115,22 +91,6 @@ class _LoginScreenState extends State<LoginScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // 保護者 / 親機 切り替えタブ
-            TabBar(
-              controller: _tabController,
-              labelColor: Colors.black,
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: const Color(0xFFFFB7B2),
-              indicatorWeight: 3,
-              labelStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-              tabs: const [
-                Tab(text: '保護者'),
-                Tab(text: '親機'),
-              ],
-            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -141,29 +101,11 @@ class _LoginScreenState extends State<LoginScreen>
                     const SizedBox(height: 20),
 
                     // ロゴ
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 8,
-                            offset: const Offset(2, 4),
-                          ),
-                        ],
-                        color: Colors.white,
-                      ),
-                      child: const Text(
-                        'ココ・シール',
-                        style: TextStyle(
-                          fontSize: 38,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF7B1FA2),
-                          letterSpacing: 2,
-                        ),
-                      ),
+                    Image.asset(
+                      'assets/images/coco_seal_logo.png',
+                      width: 330,
+                      height: 125,
+                      fit: BoxFit.contain,
                     ),
 
                     const SizedBox(height: 40),

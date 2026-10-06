@@ -2,8 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../api_service.dart';
-import '../admin/admin_home_screen.dart';
-import '../parent/parent_home_screen.dart';
+import '../../auth_gate.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -99,20 +98,11 @@ class _RegisterScreenState extends State<RegisterScreen>
 
         if (!mounted) return;
 
-        // 5. 選択された役割に応じて画面遷移
-        if (_selectedRole == 'parent') {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const ParentHomeScreen()),
-            (route) => false,
-          );
-        } else {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminHomeScreen()),
-            (route) => false,
-          );
-        }
+        // AuthGateが保存されたroleを読み、適切なホーム画面へ遷移する。
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute<void>(builder: (_) => const AuthGate()),
+          (route) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
       setState(() {

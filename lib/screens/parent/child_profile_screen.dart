@@ -140,7 +140,7 @@ class _ChildProfileScreenState
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
+                    backgroundColor: const Color(0xFF7447C8),
                     foregroundColor: Colors.white,
                   ),
                   child: const Text('変更する'),
@@ -214,9 +214,9 @@ class _ChildProfileScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF7F3FF),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF7447C8),
         elevation: 0,
         leadingWidth: 90,
         leading: TextButton.icon(
@@ -226,12 +226,12 @@ class _ChildProfileScreenState
           icon: const Icon(
             Icons.arrow_back_ios,
             size: 16,
-            color: Colors.grey,
+            color: Colors.white,
           ),
           label: const Text(
             '戻る',
             style: TextStyle(
-              color: Colors.grey,
+              color: Colors.white,
               fontSize: 14,
             ),
           ),
@@ -418,7 +418,7 @@ class _ChildProfileScreenState
                           Icon(
                             Icons.add,
                             size: 20,
-                            color: Colors.black87,
+                            color: Color(0xFF7447C8),
                           ),
                           SizedBox(width: 8),
                           Text(
@@ -427,7 +427,7 @@ class _ChildProfileScreenState
                               fontSize: 15,
                               fontWeight:
                                   FontWeight.w600,
-                              color: Colors.black87,
+                              color: Color(0xFF7447C8),
                             ),
                           ),
                         ],
