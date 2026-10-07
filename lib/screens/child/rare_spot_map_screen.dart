@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../api_service.dart';
 import '../../models/gateway.dart';
@@ -18,6 +19,7 @@ class _RareSpotScreenState extends State<RareSpotScreen> {
 
   bool _loading = true;
   String? _error;
+
   List<Gateway> _gateways = const [];
   Map<String, Seal> _seals = const {};
 
@@ -43,19 +45,27 @@ class _RareSpotScreenState extends State<RareSpotScreen> {
       final seals = results[1] as List<Seal>;
 
       if (!mounted) return;
+
       setState(() {
         _gateways = gateways
-            .where((g) =>
-                g.latitude != null &&
-                g.longitude != null &&
-                g.latitude != 0 &&
-                g.longitude != 0)
+            .where(
+              (g) =>
+                  g.latitude != null &&
+                  g.longitude != null &&
+                  g.latitude != 0 &&
+                  g.longitude != 0,
+            )
             .toList();
-        _seals = {for (final seal in seals) seal.id: seal};
+
+        _seals = {
+          for (final seal in seals) seal.id: seal,
+        };
+
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _loading = false;
         _error = e.toString().replaceFirst('Exception: ', '');
@@ -63,18 +73,99 @@ class _RareSpotScreenState extends State<RareSpotScreen> {
     }
   }
 
-  Set<Marker> get _markers {
+  List<Marker> get _markers {
     return _gateways.map((gateway) {
       final seal = _seals[gateway.distributeSealId];
+
+      final gatewayName = gateway.name.trim().isEmpty
+          ? 'レアシールスポット'
+          : gateway.name;
+
+      final sealName =
+          seal == null ? '未設定' : seal.name;
+
       return Marker(
-        markerId: MarkerId(gateway.id),
-        position: LatLng(gateway.latitude!, gateway.longitude!),
-        infoWindow: InfoWindow(
-          title: gateway.name.trim().isEmpty ? 'レアシールスポット' : gateway.name,
-          snippet: seal == null ? '配布シール：未設定' : '配布シール：${seal.name}',
+        point: LatLng(
+          gateway.latitude!,
+          gateway.longitude!,
+        ),
+        width: 70,
+        height: 70,
+        child: Tooltip(
+          message: '$gatewayName\n配布シール：$sealName',
+          child: GestureDetector(
+            onTap: () {
+              _showSpotInfo(
+                gatewayName: gatewayName,
+                sealName: sealName,
+              );
+            },
+            child: const Icon(
+              Icons.location_on_rounded,
+              color: _purple,
+              size: 52,
+            ),
+          ),
         ),
       );
-    }).toSet();
+    }).toList();
+  }
+
+  void _showSpotInfo({
+    required String gatewayName,
+    required String sealName,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              24,
+              8,
+              24,
+              28,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.location_on_rounded,
+                  color: _purple,
+                  size: 44,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  gatewayName,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _purple.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    '配布シール：$sealName',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -94,7 +185,9 @@ class _RareSpotScreenState extends State<RareSpotScreen> {
       ),
       body: _loading
           ? const Center(
-              child: CircularProgressIndicator(color: _purple),
+              child: CircularProgressIndicator(
+                color: _purple,
+              ),
             )
           : _error != null
               ? Center(
@@ -110,6 +203,9 @@ class _RareSpotScreenState extends State<RareSpotScreen> {
                         const SizedBox(height: 16),
                         FilledButton(
                           onPressed: _load,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _purple,
+                          ),
                           child: const Text('再試行'),
                         ),
                       ],
@@ -118,27 +214,47 @@ class _RareSpotScreenState extends State<RareSpotScreen> {
                 )
               : Stack(
                   children: [
-                    GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: _gateways.isEmpty
+                    FlutterMap(
+                      options: MapOptions(
+                        initialCenter: _gateways.isEmpty
                             ? _defaultCenter
                             : LatLng(
                                 _gateways.first.latitude!,
                                 _gateways.first.longitude!,
                               ),
-                        zoom: _gateways.isEmpty ? 12 : 14,
+                        initialZoom:
+                            _gateways.isEmpty ? 12 : 14,
                       ),
-                      markers: _markers,
-                      zoomControlsEnabled: true,
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName:
+                              'com.example.coco',
+                        ),
+
+                        MarkerLayer(
+                          markers: _markers,
+                        ),
+
+                        RichAttributionWidget(
+                          attributions: const [
+                            TextSourceAttribution(
+                              'OpenStreetMap contributors',
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
+
                     if (_gateways.isEmpty)
-                      Positioned(
+                      const Positioned(
                         left: 16,
                         right: 16,
                         top: 16,
                         child: Card(
                           child: Padding(
-                            padding: const EdgeInsets.all(14),
+                            padding: EdgeInsets.all(14),
                             child: Text(
                               '設置場所が登録されている親機はまだありません。',
                               textAlign: TextAlign.center,

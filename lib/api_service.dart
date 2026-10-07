@@ -1097,70 +1097,70 @@ _decode(response);
 
 
   /// 親機名・配布シール・設置位置を更新する。
-
-  static Future<void> updateGateway({
-
-    required String gatewayId,
-
-    required String name,
-
-    required String distributeSealId,
-
-    required double latitude,
-
-    required double longitude,
-
-  }) async {
-
-    if (AppConfig.useDemoData) {
-
-      DemoData.updateGateway(
-
-        gatewayId: gatewayId,
-
-        name: name,
-
-        distributeSealId: distributeSealId,
-
-        latitude: latitude,
-
-        longitude: longitude,
-
-      );
-
-      return;
-
-    }
-
-    final response = await http
-
-        .patch(
-
-          Uri.parse('$baseUrl/users/gateway'),
-
-          headers: await _getHeaders(),
-
-          body: jsonEncode({
-
-            'device_id': gatewayId,
-
-            'name': name,
-
-            'distribute_seal_id': distributeSealId,
-
-            'latitude': latitude,
-
-            'longitude': longitude,
-
-          }),
-
-        )
-
-        .timeout(_timeout);
-
-    _decode(response);
-
+static Future<void> updateGateway({
+  required String gatewayId,
+  required String name,
+  String? distributeSealId,
+  required double latitude,
+  required double longitude,
+}) async {
+  if (AppConfig.useDemoData) {
+    DemoData.updateGateway(
+      gatewayId: gatewayId,
+      name: name,
+      distributeSealId: distributeSealId ?? '',
+      latitude: latitude,
+      longitude: longitude,
+    );
+    return;
   }
+
+  // 配布シールが設定されていない場合は
+  // 空文字ではなく null を送信する
+  final normalizedSealId =
+      distributeSealId?.trim();
+
+  final body = <String, dynamic>{
+    'device_id': gatewayId,
+    'name': name,
+    'distribute_seal_id':
+        normalizedSealId == null ||
+                normalizedSealId.isEmpty
+            ? null
+            : normalizedSealId,
+    'latitude': latitude,
+    'longitude': longitude,
+  };
+
+  // デバッグ用
+  debugPrint('=== 親機情報 PATCH ===');
+  debugPrint('gateway_id: $gatewayId');
+  debugPrint(
+    'PATCH URL: $baseUrl/users/gateway',
+  );
+  debugPrint(
+    'PATCH body: ${jsonEncode(body)}',
+  );
+
+  final response = await http
+      .patch(
+        Uri.parse('$baseUrl/users/gateway'),
+        headers: await _getHeaders(),
+        body: jsonEncode(body),
+      )
+      .timeout(_timeout);
+
+  // サーバーから返ってきた内容を確認できるようにする
+  debugPrint(
+    'PATCH status: ${response.statusCode}',
+  );
+  debugPrint(
+    'PATCH response: '
+    '${utf8.decode(response.bodyBytes)}',
+  );
+
+  _decode(response);
+}
 
 
 

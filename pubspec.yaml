@@ -43,6 +43,8 @@ dependencies:
   file_picker: ^13.1.0
   permission_handler: 12.0.1
   flutter_blue_plus: 2.3.14
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
