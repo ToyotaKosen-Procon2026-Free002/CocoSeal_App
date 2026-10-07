@@ -285,8 +285,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                                           final text = item.isSos
                                               ? 'SOSを受信しました'
                                               : log!.partnerIsGateway
-                                                  ? '${log.partnerId}を通過'
-                                                  : '${log.partnerId}さんとすれ違い';
+                                                  ? '${(log.partnerName?.trim().isNotEmpty ?? false) ? log.partnerName! : log.partnerId}を通過'
+                                                  : '${(log.partnerName?.trim().isNotEmpty ?? false) ? log.partnerName! : log.partnerId}さんとすれ違い';
                                           return _LogItem(
                                             date: '$month/$day',
                                             time: '$hour:$minute',

@@ -28,7 +28,9 @@ class _SealRegisterScreenState extends State<SealRegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _gatewayNameController = TextEditingController(text: widget.gateway.name);
+    _gatewayNameController = TextEditingController(text: 'プロコンかいじょう');
+    _sealNameController.text = 'うどん';
+    _descriptionController.text = 'コシがあるよ！';
   }
 
   Future<void> _pickImage() async {

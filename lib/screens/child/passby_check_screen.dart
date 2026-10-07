@@ -45,7 +45,9 @@ class _PassbyCheckScreenState extends State<PassbyCheckScreen> {
       ),
       ApiService.fetchSeals(),
     ]);
-    final logs = results[0] as List<NearbyCommunication>;
+    final logs = (results[0] as List<NearbyCommunication>)
+        .where((log) => log.receiveSealId != null && log.receiveSealId!.trim().isNotEmpty)
+        .toList();
     final catalog = results[1] as List<Seal>;
     logs.sort((a, b) => b.timeStamp.compareTo(a.timeStamp));
     return _PassbyData(logs: logs, seals: {for (final seal in catalog) seal.id: seal});
@@ -58,16 +60,6 @@ class _PassbyCheckScreenState extends State<PassbyCheckScreen> {
         '${two(local.hour)}:${two(local.minute)}';
   }
 
-  String _placeFor(NearbyCommunication log) {
-    if (log.partnerIsGateway) return log.partnerId;
-    const places = <String, String>{
-      'ゆうき': 'さくら公園',
-      'みお': '豊田高専 正門前',
-      'そうた': '駅前ひろば',
-      'はると': '中央図書館',
-    };
-    return places[log.partnerId] ?? 'みどり児童館';
-  }
 
   void _showDetail(NearbyCommunication log, Seal? seal) {
     showDialog<void>(
@@ -87,14 +79,12 @@ class _PassbyCheckScreenState extends State<PassbyCheckScreen> {
               const SizedBox(height: 12),
               _DetailRow(
                 label: log.partnerIsGateway ? 'とおった親機' : 'くれたともだち',
-                value: log.partnerId,
+                value: (log.partnerName?.trim().isNotEmpty ?? false)
+                    ? log.partnerName!
+                    : log.partnerId,
               ),
               _DetailRow(label: 'シールのなまえ', value: seal?.name ?? 'シールなし'),
               _DetailRow(label: 'すれちがったじかん', value: _formatDate(log.timeStamp)),
-              _DetailRow(
-                label: 'すれちがったばしょ',
-                value: _placeFor(log),
-              ),
               const _DetailRow(label: 'かくとくコイン', value: '1コイン'),
             ],
           ),
@@ -167,7 +157,9 @@ class _PassbyCheckScreenState extends State<PassbyCheckScreen> {
                       style: const TextStyle(fontWeight: FontWeight.bold, color: _purple),
                     ),
                     Text(
-                      log.partnerId,
+                      (log.partnerName?.trim().isNotEmpty ?? false)
+                          ? log.partnerName!
+                          : log.partnerId,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12, color: Colors.black54),

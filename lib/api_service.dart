@@ -926,11 +926,16 @@ _decode(response);
 
 
   /// 所持シールの状態を更新する。
-  /// statusId = 1: 交換に出す / statusId = 0: 交換から外す
+  /// statusId = 0: 未配置 / 1: シール帳 / 2: 交換ボックス
   static Future<void> updateDeviceSealStatus({
     required String deviceId,
     required String deviceSealId,
     required int statusId,
+    int? bookPage,
+    double? bookX,
+    double? bookY,
+    double? bookRotation,
+    double? bookScale,
   }) async {
     if (AppConfig.useDemoData) return;
 
@@ -942,6 +947,11 @@ _decode(response);
             'device_id': deviceId,
             'id': deviceSealId,
             'status_id': statusId,
+            'book_page': bookPage ?? 0,
+            'book_x': bookX ?? 0,
+            'book_y': bookY ?? 0,
+            'book_rotation': bookRotation ?? 0,
+            'book_scale': bookScale ?? 1,
           }),
         )
         .timeout(_timeout);
