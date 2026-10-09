@@ -100,7 +100,6 @@ class _PassbyCheckScreenState extends State<PassbyCheckScreen> {
       appBar: AppBar(
         title: const Text('すれちがいかくにん'),
         backgroundColor: Colors.white,
-        actions: [IconButton(onPressed: _reload, icon: const Icon(Icons.refresh))],
       ),
       body: FutureBuilder<_PassbyData>(
         future: _dataFuture,

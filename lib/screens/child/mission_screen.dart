@@ -177,14 +177,6 @@ class _MissionScreenState extends State<MissionScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
-        actions: [
-          if (!AppConfig.useDemoData)
-            IconButton(
-              tooltip: '更新',
-              onPressed: _loading ? null : _loadMissions,
-              icon: const Icon(Icons.refresh),
-            ),
-        ],
       ),
       body: AppConfig.useDemoData
           ? _DemoWeeklyMissionView(
@@ -355,7 +347,7 @@ class _MissionScreenState extends State<MissionScreen> {
           ),
         ),
         child: Text(
-          claiming ? 'うけとり中...' : 'ごほうびをもらう！',
+          claiming ? 'うけとり中...' : 'うけとる',
           style: const TextStyle(
             fontSize: 12,
             color: Colors.black87,
@@ -375,7 +367,7 @@ class _MissionScreenState extends State<MissionScreen> {
         borderRadius: BorderRadius.circular(4),
       ),
       child: const Text(
-        'ちょうせんちゅう',
+        'うけとる',
         style: TextStyle(
           fontSize: 12,
           color: Colors.black45,
@@ -395,7 +387,7 @@ class _MissionScreenState extends State<MissionScreen> {
         borderRadius: BorderRadius.circular(4),
       ),
       child: const Text(
-        'うけとり済み',
+        'うけとりずみ',
         style: TextStyle(
           fontSize: 12,
           color: Colors.black54,
@@ -531,7 +523,7 @@ class _DemoWeeklyMissionViewState
                     backgroundColor: const Color(0xFFE47AB1),
                   ),
                   child: Text(
-                    claimed ? 'うけとり済み' : 'うけとる',
+                    claimed ? 'うけとりずみ' : 'うけとる',
                   ),
                 ),
               ],

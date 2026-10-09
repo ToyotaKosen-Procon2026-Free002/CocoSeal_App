@@ -83,9 +83,9 @@ class _SealExchangeScreenState extends State<SealExchangeScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('${pack.name}と交換しますか？'),
+        title: Text('${pack.name}とこうかんしますか？'),
         content: Text(
-          '$totalPriceコインで$count枚のシールを引きます',
+          '$totalPriceコインで$countまいのシールをひきます',
         ),
         actions: [
           TextButton(

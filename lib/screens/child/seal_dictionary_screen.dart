@@ -33,7 +33,6 @@ class _SealDictionaryScreenState extends State<SealDictionaryScreen> {
       appBar: AppBar(
         title: const Text('シールずかん', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
-        actions: [IconButton(onPressed: _reload, icon: const Icon(Icons.refresh))],
       ),
       body: Container(
         decoration: const BoxDecoration(

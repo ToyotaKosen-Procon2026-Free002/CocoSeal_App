@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? _errorMessage;
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   Future<void> _handleLogin() async {
     setState(() {
@@ -155,9 +156,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: _passwordController,
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         hintText: '••••••••',
+                        suffixIcon: IconButton(
+                          tooltip: _obscurePassword ? 'パスワードを表示' : 'パスワードを隠す',
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                        ),
                         hintStyle: TextStyle(color: Colors.grey[300]),
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 20, vertical: 16),

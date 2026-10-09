@@ -175,13 +175,6 @@ class _RareSpotScreenState extends State<RareSpotScreen> {
         title: const Text('レアシールスポット'),
         backgroundColor: _purple,
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: '最新の親機情報を取得',
-          ),
-        ],
       ),
       body: _loading
           ? const Center(

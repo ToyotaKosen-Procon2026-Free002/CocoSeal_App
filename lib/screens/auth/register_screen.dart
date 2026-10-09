@@ -19,7 +19,8 @@ class _RegisterScreenState extends State<RegisterScreen>
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  final TextEditingController _pinController = TextEditingController();
+  // 大会用: 保護者PIN入力を一時的に非表示
+  // final TextEditingController _pinController = TextEditingController();
 
   String _selectedRole = 'parent'; // 初期値は保護者
   String? _errorMessage;
@@ -51,7 +52,8 @@ class _RegisterScreenState extends State<RegisterScreen>
     final String email = _emailController.text.trim();
     final String password = _passwordController.text.trim();
     final String confirmPassword = _confirmPasswordController.text.trim();
-    final String pin = _pinController.text.trim();
+    // 大会用: 保護者PINを一時的に使用しない
+    // final String pin = _pinController.text.trim();
 
     if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       setState(() {
@@ -67,12 +69,13 @@ class _RegisterScreenState extends State<RegisterScreen>
       return;
     }
 
-    if (_selectedRole == 'parent' && pin.length != 4) {
-      setState(() {
-        _errorMessage = '保護者用PINコードは4桁の数字で入力してください';
-      });
-      return;
-    }
+    // 大会用: 保護者PINの入力チェックを一時的に無効化
+    // if (_selectedRole == 'parent' && pin.length != 4) {
+    //   setState(() {
+    //     _errorMessage = '保護者用PINコードは4桁の数字で入力してください';
+    //   });
+    //   return;
+    // }
 
     setState(() {
       _isLoading = true;
@@ -136,7 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _pinController.dispose();
+    // _pinController.dispose(); // 大会用: 保護者PINを一時的に無効化
     super.dispose();
   }
 
@@ -251,16 +254,17 @@ class _RegisterScreenState extends State<RegisterScreen>
                     ),
                     const SizedBox(height: 20),
 
-                    if (_selectedRole == 'parent') ...[
-                      _buildTextField(
-                        label: '保護者用PINコード (4桁の数字)',
-                        controller: _pinController,
-                        obscureText: true,
-                        keyboardType: TextInputType.number,
-                        maxLength: 4,
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+                    // 大会用: 保護者PIN入力欄を一時的に非表示
+                    // if (_selectedRole == 'parent') ...[
+                    //   _buildTextField(
+                    //     label: '保護者用PINコード (4桁の数字)',
+                    //     controller: _pinController,
+                    //     obscureText: true,
+                    //     keyboardType: TextInputType.number,
+                    //     maxLength: 4,
+                    //   ),
+                    //   const SizedBox(height: 20),
+                    // ],
 
                     if (_errorMessage != null) ...[
                       Center(
