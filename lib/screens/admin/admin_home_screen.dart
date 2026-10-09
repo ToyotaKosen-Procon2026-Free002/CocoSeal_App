@@ -29,17 +29,13 @@ import 'gateway_location_screen.dart';
 import 'gateway_select_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
-
   const AdminHomeScreen({super.key});
 
   @override
-
   State<AdminHomeScreen> createState() => _AdminHomeScreenState();
-
 }
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
-
   static const Color _purple = Color(0xFF7447C8);
 
   static const Color _darkPurple = Color(0xFF3E2465);
@@ -63,21 +59,16 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   String? _selectedGatewayId;
 
   @override
-
   void initState() {
-
     super.initState();
 
     _reload();
 
     _startNotifications();
-
   }
 
   void _reload() {
-
     _dataFuture = _loadData();
-
   }
 
   Future<_AdminData> _loadData() async {
@@ -115,75 +106,57 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       for (final seal in originals) seal.id: seal,
     };
 
-    return _AdminData(
-      gateways: gateways,
-      seals: sealsById.values.toList(),
-    );
+    return _AdminData(gateways: gateways, seals: sealsById.values.toList());
   }
 
   Future<void> _startNotifications() async {
-
     try {
-
       final messaging = FirebaseMessaging.instance;
 
       final settings = await messaging.requestPermission(
-
         alert: true,
 
         badge: true,
 
         sound: true,
-
       );
 
       if (settings.authorizationStatus == AuthorizationStatus.denied) {
-
         debugPrint('親機の通知権限が許可されていません');
 
         return;
-
       }
 
       final token = await messaging.getToken();
 
       if (token != null && token.isNotEmpty) {
-
         await ApiService.registerNotifyToken(token);
-
       }
 
       _tokenRefreshSubscription = messaging.onTokenRefresh.listen((newToken) {
-
         ApiService.registerNotifyToken(newToken).catchError((error) {
-
           debugPrint('更新された通知トークンの登録に失敗しました: $error');
-
         });
-
       });
 
       _messageSubscription = FirebaseMessaging.onMessage.listen(_handleMessage);
 
-      _openedMessageSubscription =
-
-          FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+      _openedMessageSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
+        _handleMessage,
+      );
 
       final initialMessage = await messaging.getInitialMessage();
 
       if (initialMessage != null) _handleMessage(initialMessage);
-
     } catch (error) {
-
       debugPrint('通知の初期化に失敗しました: $error');
-
     }
-
   }
 
   void _handleMessage(RemoteMessage message) {
-
-    final type = (message.data['type'] ?? message.data['event'] ?? '').toString().toLowerCase();
+    final type = (message.data['type'] ?? message.data['event'] ?? '')
+        .toString()
+        .toLowerCase();
 
     final title = (message.notification?.title ?? '').toLowerCase();
 
@@ -192,141 +165,89 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     if (!mounted) return;
 
     setState(() {
-
       _sosActive = true;
 
-      _sosChildName = (message.data['child_name'] ??
-
-              message.data['device_name'] ??
-
-              message.data['child_id'] ??
-
-              '子機')
-
-          .toString();
-
+      _sosChildName =
+          (message.data['child_name'] ??
+                  message.data['device_name'] ??
+                  message.data['child_id'] ??
+                  '子機')
+              .toString();
     });
-
   }
 
   void _beginDismiss() {
-
     _dismissTimer?.cancel();
 
     _dismissTimer = Timer(const Duration(seconds: 3), () {
-
       if (mounted) setState(() => _sosActive = false);
-
     });
-
   }
 
   void _cancelDismiss() {
-
     _dismissTimer?.cancel();
 
     _dismissTimer = null;
-
   }
 
   Future<void> _registerGateway() async {
-
     final registered = await Navigator.of(context).push<bool>(
-
-      MaterialPageRoute(
-
-        builder: (_) => const _GatewayRegisterScreen(),
-
-      ),
-
+      MaterialPageRoute(builder: (_) => const _GatewayRegisterScreen()),
     );
 
     if (registered == true && mounted) {
-
       setState(_reload);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-
-        const SnackBar(content: Text('親機を登録しました')),
-
-      );
-
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('親機を登録しました')));
     }
-
   }
 
   Future<void> _openEditor(Gateway gateway) async {
-
     final changed = await Navigator.push<bool>(
-
       context,
 
       MaterialPageRoute(builder: (_) => SealRegisterScreen(gateway: gateway)),
-
     );
 
     if (changed == true && mounted) {
-
       setState(() {
-
         _reload();
-
       });
-
     }
-
   }
 
   Future<void> _selectGateway() async {
-
     try {
-
       final gateways = await ApiService.fetchUserGateways();
 
       if (!mounted || gateways.isEmpty) return;
 
       final selected = await Navigator.push<Gateway>(
-
         context,
 
         MaterialPageRoute(
-
           builder: (_) => GatewaySelectScreen(
-
             gateways: gateways,
 
             selectedGatewayId: _selectedGatewayId,
-
           ),
-
         ),
-
       );
 
       if (selected != null && mounted) {
-
         setState(() {
-
           _selectedGatewayId = selected.id;
 
           _reload();
-
         });
-
       }
-
     } catch (e) {
-
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-
-        SnackBar(content: Text('親機一覧を取得できませんでした: $e')),
-
-      );
-
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('親機一覧を取得できませんでした: $e')));
     }
-
   }
 
   Future<void> _configureGatewayWifi(Gateway gateway) async {
@@ -344,9 +265,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 
   Future<void> _editGatewayLocation() async {
-
     try {
-
       final gateways = await ApiService.fetchUserGateways();
 
       if (!mounted || gateways.isEmpty) return;
@@ -354,57 +273,36 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       Gateway gateway = gateways.first;
 
       if (_selectedGatewayId != null) {
-
         for (final item in gateways) {
-
           if (item.id == _selectedGatewayId) {
-
             gateway = item;
 
             break;
-
           }
-
         }
-
       }
 
       final changed = await Navigator.push<bool>(
-
         context,
 
         MaterialPageRoute(
-
           builder: (_) => GatewayLocationScreen(gateway: gateway),
-
         ),
-
       );
 
       if (changed == true && mounted) {
-
         setState(_reload);
-
       }
-
     } catch (e) {
-
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-
-        SnackBar(content: Text('親機情報を取得できませんでした: $e')),
-
-      );
-
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('親機情報を取得できませんでした: $e')));
     }
-
   }
 
   @override
-
   void dispose() {
-
     _messageSubscription?.cancel();
 
     _openedMessageSubscription?.cancel();
@@ -414,20 +312,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     _dismissTimer?.cancel();
 
     super.dispose();
-
   }
 
   @override
-
   Widget build(BuildContext context) {
-
     return Scaffold(
-
       backgroundColor: _sosActive ? const Color(0xFFFF7B81) : _background,
 
       appBar: AppBar(
-
-        title: Text(_sosActive ? 'SOSアラート' : '親機ステータス・管理画面', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text(
+          _sosActive ? 'SOSアラート' : '親機ステータス・管理画面',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
 
         centerTitle: true,
 
@@ -456,131 +352,97 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         ),
 
         actions: [
-
           IconButton(
-
             onPressed: _sosActive ? null : _selectGateway,
 
             icon: const Icon(Icons.swap_horiz_rounded),
 
             tooltip: '親機を切り替える',
-
           ),
 
           IconButton(
-
             onPressed: _sosActive ? null : _editGatewayLocation,
 
             icon: const Icon(Icons.location_on_outlined),
 
             tooltip: '設置場所を登録・変更',
-
           ),
 
           TextButton.icon(
-
             onPressed: _sosActive ? null : _registerGateway,
 
             icon: Icon(
-
               Icons.add_circle_outline_rounded,
 
               size: 18,
 
               color: _sosActive ? Colors.black87 : Colors.white,
-
             ),
 
             label: Text(
-
               '親機を登録',
 
               softWrap: false,
 
               style: TextStyle(
-
                 color: _sosActive ? Colors.black87 : Colors.white,
 
                 fontSize: 12,
-
               ),
-
             ),
-
           ),
 
           const SizedBox(width: 8),
-
         ],
-
       ),
 
       body: SafeArea(
-
         child: FutureBuilder<_AdminData>(
-
           future: _dataFuture,
 
           builder: (context, snapshot) {
-
             if (snapshot.connectionState == ConnectionState.waiting) {
-
-              return const Center(child: CircularProgressIndicator(color: _purple));
-
+              return const Center(
+                child: CircularProgressIndicator(color: _purple),
+              );
             }
 
             if (snapshot.hasError) {
-
               return _ErrorView(
-
                 error: snapshot.error,
 
                 onRetry: () => setState(_reload),
 
                 onRegister: _registerGateway,
-
               );
-
             }
 
             final data = snapshot.data!;
 
             if (data.gateways.isEmpty) {
-
               return _EmptyGatewayView(onRegister: _registerGateway);
-
             }
 
             Gateway gateway = data.gateways.first;
 
             if (_selectedGatewayId != null) {
-
               for (final item in data.gateways) {
-
                 if (item.id == _selectedGatewayId) {
-
                   gateway = item;
 
                   break;
-
                 }
-
               }
-
             }
 
             Seal? selectedSeal;
 
             for (final seal in data.seals) {
-
               if (seal.id == gateway.distributeSealId) selectedSeal = seal;
-
             }
 
             return _sosActive
-
                 ? _SosBody(
-
                     gateway: gateway,
 
                     seal: selectedSeal,
@@ -592,42 +454,30 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     onHoldStart: _beginDismiss,
 
                     onHoldCancel: _cancelDismiss,
-
                   )
-
                 : _StatusBody(
                     gateway: gateway,
                     seal: selectedSeal,
                     onEdit: () => _openEditor(gateway),
                     onWifi: () => _configureGatewayWifi(gateway),
                   );
-
           },
-
         ),
-
       ),
-
     );
-
   }
-
 }
 
 class _GatewayRegisterScreen extends StatefulWidget {
-
   final Gateway? gateway;
 
   const _GatewayRegisterScreen({this.gateway});
 
   @override
-
   State<_GatewayRegisterScreen> createState() => _GatewayRegisterScreenState();
-
 }
 
 class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
-
   static const Color _purple = Color(0xFF7447C8);
 
   static const Color _background = Color(0xFFF7F3FF);
@@ -659,17 +509,14 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
   String _statusText = '近くの親機を検索してください';
 
   List<ScanResult> get _results {
-
     final list = _found.values.toList();
 
     list.sort((a, b) => b.rssi.compareTo(a.rssi));
 
     return list;
-
   }
 
   String _deviceName(ScanResult result) {
-
     final adv = result.advertisementData.advName.trim();
 
     if (adv.isNotEmpty) return adv;
@@ -677,13 +524,10 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
     final platform = result.device.platformName.trim();
 
     return platform.isNotEmpty ? platform : 'COCO 親機';
-
   }
 
   @override
-
   void dispose() {
-
     _scanSubscription?.cancel();
 
     FlutterBluePlus.stopScan();
@@ -693,41 +537,30 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
     _passwordController.dispose();
 
     super.dispose();
-
   }
 
   Future<bool> _requestBluetoothPermissions() async {
-
     final statuses = await [
-
       Permission.bluetoothScan,
 
       Permission.bluetoothConnect,
-
     ].request();
 
     final granted = statuses.values.every((status) => status.isGranted);
 
     if (!granted && mounted) {
-
       setState(() {
-
         _errorText = 'Bluetoothの「付近のデバイス」権限を許可してください。';
-
       });
-
     }
 
     return granted;
-
   }
 
   Future<void> _scan() async {
-
     if (_submitting || _scanning) return;
 
     setState(() {
-
       _errorText = null;
 
       _statusText = 'Bluetoothを確認しています…';
@@ -735,83 +568,63 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
       _found.clear();
 
       _selectedDevice = null;
-
     });
 
     try {
-
       if (!await _requestBluetoothPermissions()) return;
 
       if (!await FlutterBluePlus.isSupported) {
-
         throw Exception('この端末はBluetooth LEに対応していません。');
-
       }
 
       if (!await FlutterBluePlus.isOn) {
-
         setState(() => _statusText = 'Bluetoothをオンにしてください');
 
         return;
-
       }
 
       await _scanSubscription?.cancel();
 
       _scanSubscription = FlutterBluePlus.onScanResults.listen(
-
         (results) {
-
           if (!mounted) return;
 
           bool changed = false;
 
           for (final result in results) {
-
             final name = _deviceName(result);
 
             final advertisesCocoService = result.advertisementData.serviceUuids
-
                 .any((uuid) => uuid == _serviceUuid);
 
-            if (name.toUpperCase().startsWith('COCO-') || advertisesCocoService) {
-
+            if (name.toUpperCase().startsWith('COCO-') ||
+                advertisesCocoService) {
               _found[result.device.remoteId.str] = result;
 
               changed = true;
-
             }
-
           }
 
           if (changed) setState(() {});
-
         },
 
         onError: (Object error) {
-
           if (mounted) setState(() => _errorText = '親機の検索に失敗しました: $error');
-
         },
-
       );
 
       setState(() {
-
         _scanning = true;
 
         _statusText = '近くの親機を検索中…';
-
       });
 
       await FlutterBluePlus.startScan(
-
         withServices: [_serviceUuid],
 
         timeout: const Duration(seconds: 10),
 
         androidUsesFineLocation: false,
-
       );
 
       await FlutterBluePlus.isScanning.where((value) => value == false).first;
@@ -819,63 +632,42 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
       if (!mounted) return;
 
       setState(() {
-
         _scanning = false;
 
         _statusText = _found.isEmpty
-
             ? '親機が見つかりませんでした。親機の電源を確認して再検索してください。'
-
             : '${_found.length}台の親機が見つかりました';
-
       });
-
     } catch (error) {
-
       if (!mounted) return;
 
       setState(() {
-
         _scanning = false;
 
         _errorText = '親機の検索に失敗しました: $error';
-
       });
-
     }
-
   }
 
   BluetoothCharacteristic _findCharacteristic(
-
     List<BluetoothService> services,
 
     Guid characteristicUuid,
-
   ) {
-
     for (final service in services) {
-
       if (service.uuid != _serviceUuid) continue;
 
       for (final characteristic in service.characteristics) {
-
         if (characteristic.uuid == characteristicUuid) return characteristic;
-
       }
-
     }
 
     throw Exception('親機に必要なGATT Characteristicが見つかりません。');
-
   }
 
   Future<Map<String, dynamic>> _readStatus(
-
     BluetoothCharacteristic statusChar,
-
   ) async {
-
     final bytes = await statusChar.read();
 
     if (bytes.isEmpty) throw Exception('親機のステータスを取得できませんでした。');
@@ -885,17 +677,13 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
     final decoded = jsonDecode(text);
 
     if (decoded is! Map<String, dynamic>) {
-
       throw Exception('親機から不正なステータスが返されました。');
-
     }
 
     return decoded;
-
   }
 
   Future<void> _provisionAndRegister() async {
-
     final device = _selectedDevice;
 
     final ssid = _ssidController.text.trim();
@@ -903,53 +691,40 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
     final password = _passwordController.text;
 
     if (device == null) {
-
       setState(() => _errorText = '登録する親機を選択してください。');
 
       return;
-
     }
 
     if (ssid.isEmpty) {
-
       setState(() => _errorText = 'Wi-Fi名（SSID）を入力してください。');
 
       return;
-
     }
 
     if (password.isEmpty) {
-
       setState(() => _errorText = 'Wi-Fiパスワードを入力してください。');
 
       return;
-
     }
 
     setState(() {
-
       _submitting = true;
 
       _errorText = null;
 
       _statusText = '親機に接続しています…';
-
     });
 
     try {
-
       await FlutterBluePlus.stopScan();
 
       if (device.isDisconnected) {
-
         await device.connect(
-
           timeout: const Duration(seconds: 15),
 
           license: License.free,
-
         );
-
       }
 
       if (!mounted) return;
@@ -961,13 +736,9 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
       // Androidでは十分なMTUを確保してから1コマンドずつ送る。
 
       try {
-
         await device.requestMtu(247);
-
       } catch (_) {
-
         // 接続時に十分なMTUが既に確保されている場合などは続行する。
-
       }
 
       final services = await device.discoverServices();
@@ -975,25 +746,16 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
       // デバッグ用：親機から見えているGATTサービスとCharacteristicを全表示
 
       for (final service in services) {
-
         debugPrint('=== SERVICE: ${service.uuid} ===');
 
         for (final characteristic in service.characteristics) {
-
           debugPrint(
-
             '  CHARACTERISTIC: ${characteristic.uuid} '
-
             'read=${characteristic.properties.read} '
-
             'write=${characteristic.properties.write} '
-
             'notify=${characteristic.properties.notify}',
-
           );
-
         }
-
       }
 
       final configChar = _findCharacteristic(services, _configUuid);
@@ -1001,15 +763,11 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
       final statusChar = _findCharacteristic(services, _statusUuid);
 
       if (!configChar.properties.write) {
-
         throw Exception('親機の設定Characteristicに書き込みできません。');
-
       }
 
       if (statusChar.properties.notify) {
-
         await statusChar.setNotifyValue(true);
-
       }
 
       if (!mounted) return;
@@ -1020,7 +778,10 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
 
       await configChar.write(utf8.encode('SSID:$ssid'), withoutResponse: false);
 
-      await configChar.write(utf8.encode('PASS:$password'), withoutResponse: false);
+      await configChar.write(
+        utf8.encode('PASS:$password'),
+        withoutResponse: false,
+      );
 
       if (!mounted) return;
 
@@ -1030,42 +791,39 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
 
       Object? lastStatusError;
 
-      for (int i = 0; i < 4; i++) {
-
+      const wifiConnectionTimeout = Duration(seconds: 60);
+      final wifiConnectionTimer = Stopwatch()..start();
+      while (wifiConnectionTimer.elapsed < wifiConnectionTimeout) {
+        final remaining = wifiConnectionTimeout - wifiConnectionTimer.elapsed;
         try {
-
-          status = await _readStatus(statusChar);
-
+          status = await _readStatus(statusChar).timeout(remaining);
           if (status['wifi_connected'] == true) break;
-
         } catch (error) {
-
           lastStatusError = error;
-
         }
 
-        await Future<void>.delayed(const Duration(milliseconds: 700));
-
+        final pollDelay = wifiConnectionTimeout - wifiConnectionTimer.elapsed;
+        if (pollDelay > Duration.zero) {
+          await Future<void>.delayed(
+            pollDelay < const Duration(seconds: 1)
+                ? pollDelay
+                : const Duration(seconds: 1),
+          );
+        }
       }
 
       if (status == null) {
-
         throw Exception('親機の状態を確認できませんでした。${lastStatusError ?? ''}');
-
       }
 
       if (status['wifi_connected'] != true) {
-
-        throw Exception('Wi-Fiに接続できませんでした。SSIDとパスワードを確認してください。');
-
+        throw Exception('60秒以内にWi-Fiに接続できませんでした。SSIDとパスワードを確認してください。');
       }
 
       final gatewayId = (status['station_id'] ?? '').toString().trim();
 
       if (gatewayId.isEmpty) {
-
         throw Exception('親機IDを取得できませんでした。');
-
       }
 
       if (!mounted) return;
@@ -1073,7 +831,9 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
       // 登録済み親機のWi-Fi再設定では、別の親機へ誤送信しないようIDを確認する。
       if (widget.gateway != null) {
         if (gatewayId.toUpperCase() != widget.gateway!.id.toUpperCase()) {
-          throw Exception('選択した親機と接続中の親機が違います。${widget.gateway!.name} を選択してください。');
+          throw Exception(
+            '選択した親機と接続中の親機が違います。${widget.gateway!.name} を選択してください。',
+          );
         }
 
         try {
@@ -1094,121 +854,84 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
       bool registered = false;
 
       for (int attempt = 0; attempt < 3; attempt++) {
-
         try {
-
           await ApiService.registerGateway(gatewayId);
 
           registered = true;
 
           break;
-
         } catch (error) {
-
           registerError = error;
 
           if (attempt < 2) {
-
             await Future<void>.delayed(const Duration(seconds: 1));
-
           }
-
         }
-
       }
 
       if (!registered) throw registerError ?? Exception('親機を登録できませんでした。');
 
       try {
-
         await device.disconnect();
-
       } catch (_) {}
 
       if (!mounted) return;
 
       try {
-
         final gateways = await ApiService.fetchUserGateways();
 
         Gateway? registeredGateway;
 
         for (final item in gateways) {
-
           if (item.id.toUpperCase() == gatewayId.toUpperCase()) {
-
             registeredGateway = item;
 
             break;
-
           }
-
         }
 
         if (registeredGateway != null && mounted) {
-
           await Navigator.of(context).push<bool>(
-
             MaterialPageRoute(
-
-              builder: (_) => GatewayLocationScreen(gateway: registeredGateway!),
-
+              builder: (_) =>
+                  GatewayLocationScreen(gateway: registeredGateway!),
             ),
-
           );
-
         }
-
       } catch (error) {
-
         debugPrint('設置場所画面の表示に失敗しました: $error');
-
       }
 
       if (!mounted) return;
 
       Navigator.of(context).pop(true);
-
     } catch (error) {
-
       try {
-
         if (device.isConnected) await device.disconnect();
-
       } catch (_) {}
 
       if (!mounted) return;
 
       setState(() {
-
         _submitting = false;
 
         _statusText = '登録に失敗しました';
 
         _errorText = error.toString().replaceFirst('Exception: ', '');
-
       });
-
     }
-
   }
 
   @override
-
   Widget build(BuildContext context) {
-
     return Scaffold(
-
       backgroundColor: _background,
 
       appBar: AppBar(
-
         title: const Text(
-
           '親機を登録',
 
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-
         ),
 
         centerTitle: true,
@@ -1218,183 +941,173 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
         foregroundColor: Colors.white,
 
         elevation: 0,
-
       ),
 
       body: SafeArea(
-
         child: Center(
-
           child: SingleChildScrollView(
-
             padding: const EdgeInsets.all(24),
 
             child: ConstrainedBox(
-
               constraints: const BoxConstraints(maxWidth: 600),
 
               child: Card(
-
                 elevation: 0,
 
                 color: Colors.white,
 
                 shape: RoundedRectangleBorder(
-
                   borderRadius: BorderRadius.circular(20),
 
                   side: const BorderSide(color: Color(0xFFE9DEFF), width: 2),
-
                 ),
 
                 child: Padding(
-
                   padding: const EdgeInsets.all(26),
 
                   child: Column(
-
                     crossAxisAlignment: CrossAxisAlignment.stretch,
 
                     children: [
-
-                      const Icon(Icons.router_rounded, size: 60, color: _purple),
+                      const Icon(
+                        Icons.router_rounded,
+                        size: 60,
+                        color: _purple,
+                      ),
 
                       const SizedBox(height: 12),
 
                       Text(
-
                         widget.gateway == null
                             ? '近くのココ・シール親機をBluetoothで探して、\nWi-Fi設定を送信します。'
                             : '${widget.gateway!.name} のWi-Fiを再設定します。\n近くの親機をBluetoothで探してください。',
 
                         textAlign: TextAlign.center,
 
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, height: 1.5),
-
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          height: 1.5,
+                        ),
                       ),
 
                       const SizedBox(height: 20),
 
                       FilledButton.icon(
-
                         onPressed: (_scanning || _submitting) ? null : _scan,
 
                         icon: _scanning
-
                             ? const SizedBox(
-
                                 width: 18,
 
                                 height: 18,
 
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
-
                             : const Icon(Icons.bluetooth_searching_rounded),
 
                         label: Text(_scanning ? '検索中…' : '近くの親機を探す'),
 
                         style: FilledButton.styleFrom(
-
                           backgroundColor: _purple,
 
                           foregroundColor: Colors.white,
 
                           minimumSize: const Size.fromHeight(52),
 
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-
                       ),
 
                       const SizedBox(height: 10),
 
                       Text(
-
                         _statusText,
 
                         textAlign: TextAlign.center,
 
-                        style: const TextStyle(fontSize: 13, color: Colors.black54),
-
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
+                        ),
                       ),
 
                       if (_results.isNotEmpty) ...[
-
                         const SizedBox(height: 18),
 
-                        const Text('見つかった親機', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '見つかった親機',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
 
                         const SizedBox(height: 8),
 
                         ..._results.map((result) {
-
-                          final selected = _selectedDevice?.remoteId == result.device.remoteId;
+                          final selected =
+                              _selectedDevice?.remoteId ==
+                              result.device.remoteId;
 
                           return Card(
-
                             margin: const EdgeInsets.only(bottom: 8),
 
-                            color: selected ? const Color(0xFFF1E9FF) : Colors.white,
+                            color: selected
+                                ? const Color(0xFFF1E9FF)
+                                : Colors.white,
 
                             child: RadioListTile<String>(
-
                               value: result.device.remoteId.str,
 
                               groupValue: _selectedDevice?.remoteId.str,
 
                               activeColor: _purple,
 
-                              title: Text(_deviceName(result), style: const TextStyle(fontWeight: FontWeight.bold)),
+                              title: Text(
+                                _deviceName(result),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
 
                               subtitle: Text('電波強度 ${result.rssi} dBm'),
 
                               onChanged: _submitting
-
                                   ? null
-
                                   : (_) => setState(() {
+                                      _selectedDevice = result.device;
 
-                                        _selectedDevice = result.device;
-
-                                        _errorText = null;
-
-                                      }),
-
+                                      _errorText = null;
+                                    }),
                             ),
-
                           );
-
                         }),
-
                       ],
 
                       const SizedBox(height: 20),
 
                       TextField(
-
                         controller: _ssidController,
 
                         enabled: !_submitting,
 
                         decoration: InputDecoration(
-
                           labelText: 'Wi-Fi名（SSID）',
 
                           prefixIcon: const Icon(Icons.wifi_rounded),
 
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-
                       ),
 
                       const SizedBox(height: 14),
 
                       TextField(
-
                         controller: _passwordController,
 
                         enabled: !_submitting,
@@ -1402,137 +1115,122 @@ class _GatewayRegisterScreenState extends State<_GatewayRegisterScreen> {
                         obscureText: _obscurePassword,
 
                         decoration: InputDecoration(
-
                           labelText: 'Wi-Fiパスワード',
 
                           prefixIcon: const Icon(Icons.lock_outline_rounded),
 
                           suffixIcon: IconButton(
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
 
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-
-                            icon: Icon(_obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded),
-
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
+                            ),
                           ),
 
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-
                       ),
 
                       if (_errorText != null) ...[
-
                         const SizedBox(height: 14),
 
                         Container(
-
                           padding: const EdgeInsets.all(12),
 
                           decoration: BoxDecoration(
-
                             color: const Color(0xFFFFEEEE),
 
                             borderRadius: BorderRadius.circular(10),
-
                           ),
 
                           child: Text(
-
                             _errorText!,
 
-                            style: const TextStyle(color: Color(0xFFB3261E), fontWeight: FontWeight.w600),
-
+                            style: const TextStyle(
+                              color: Color(0xFFB3261E),
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-
                         ),
-
                       ],
 
                       const SizedBox(height: 22),
 
                       SizedBox(
-
                         height: 54,
 
                         child: FilledButton(
-
                           onPressed: _submitting ? null : _provisionAndRegister,
 
                           style: FilledButton.styleFrom(
-
                             backgroundColor: _purple,
 
                             foregroundColor: Colors.white,
 
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
 
                           child: _submitting
-
                               ? Row(
-
                                   mainAxisAlignment: MainAxisAlignment.center,
 
                                   children: [
-
                                     SizedBox(
-
                                       width: 20,
 
                                       height: 20,
 
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
                                     ),
 
                                     SizedBox(width: 12),
 
-                                    Text(widget.gateway == null ? '設定・登録中…' : 'Wi-Fi設定中…', style: const TextStyle(fontWeight: FontWeight.bold)),
-
+                                    Text(
+                                      widget.gateway == null
+                                          ? '設定・登録中…'
+                                          : 'Wi-Fi設定中…',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ],
-
                                 )
-
                               : Text(
-
                                   widget.gateway == null
                                       ? 'Wi-Fiを設定して親機を登録'
                                       : 'Wi-Fiを設定',
 
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-
                         ),
-
                       ),
-
                     ],
-
                   ),
-
                 ),
-
               ),
-
             ),
-
           ),
-
         ),
-
       ),
-
     );
-
   }
-
 }
 
 class _EmptyGatewayView extends StatelessWidget {
-
   static const Color _purple = Color(0xFF7447C8);
 
   static const Color _darkPurple = Color(0xFF3E2465);
@@ -1542,115 +1240,84 @@ class _EmptyGatewayView extends StatelessWidget {
   const _EmptyGatewayView({required this.onRegister});
 
   @override
-
   Widget build(BuildContext context) {
-
     return Center(
-
       child: SingleChildScrollView(
-
         padding: const EdgeInsets.all(28),
 
         child: ConstrainedBox(
-
           constraints: const BoxConstraints(maxWidth: 520),
 
           child: Column(
-
             mainAxisSize: MainAxisSize.min,
 
             children: [
-
               const Icon(Icons.router_rounded, size: 76, color: _purple),
 
               const SizedBox(height: 20),
 
               const Text(
-
                 '親機が登録されていません',
 
                 textAlign: TextAlign.center,
 
                 style: TextStyle(
-
                   color: _darkPurple,
 
                   fontSize: 22,
 
                   fontWeight: FontWeight.w800,
-
                 ),
-
               ),
 
               const SizedBox(height: 10),
 
               const Text(
-
                 '親機IDを入力して、このアカウントに親機を登録してください。',
 
                 textAlign: TextAlign.center,
 
                 style: TextStyle(fontSize: 14, height: 1.5),
-
               ),
 
               const SizedBox(height: 28),
 
               SizedBox(
-
                 width: double.infinity,
 
                 height: 56,
 
                 child: FilledButton.icon(
-
                   onPressed: onRegister,
 
                   icon: const Icon(Icons.add_rounded),
 
                   label: const Text(
-
                     '親機を登録',
 
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-
                   ),
 
                   style: FilledButton.styleFrom(
-
                     backgroundColor: _purple,
 
                     foregroundColor: Colors.white,
 
                     shape: RoundedRectangleBorder(
-
                       borderRadius: BorderRadius.circular(16),
-
                     ),
-
                   ),
-
                 ),
-
               ),
-
             ],
-
           ),
-
         ),
-
       ),
-
     );
-
   }
-
 }
 
 class _StatusBody extends StatelessWidget {
-
   static const Color _purple = Color(0xFF7447C8);
 
   static const Color _darkPurple = Color(0xFF3E2465);
@@ -1673,31 +1340,22 @@ class _StatusBody extends StatelessWidget {
   });
 
   @override
-
   Widget build(BuildContext context) {
-
     return Padding(
-
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 34),
 
       child: Column(
-
         children: [
-
           Center(
-
             child: ConstrainedBox(
-
               constraints: const BoxConstraints(maxWidth: 860),
 
               child: Container(
-
                 width: double.infinity,
 
                 padding: const EdgeInsets.all(32),
 
                 decoration: BoxDecoration(
-
                   color: Colors.white,
 
                   borderRadius: BorderRadius.circular(20),
@@ -1705,23 +1363,17 @@ class _StatusBody extends StatelessWidget {
                   border: Border.all(color: _softPurple, width: 2),
 
                   boxShadow: const [
-
                     BoxShadow(
-
                       color: Color(0x167447C8),
 
                       blurRadius: 12,
 
                       offset: Offset(0, 5),
-
                     ),
-
                   ],
-
                 ),
 
                 child: _GatewayInfo(
-
                   gateway: gateway,
 
                   seal: seal,
@@ -1729,21 +1381,15 @@ class _StatusBody extends StatelessWidget {
                   accentColor: _darkPurple,
 
                   dividerColor: _softPurple,
-
                 ),
-
               ),
-
             ),
-
           ),
 
           const Spacer(),
 
           Center(
-
             child: ConstrainedBox(
-
               constraints: const BoxConstraints(maxWidth: 860),
 
               child: Row(
@@ -1756,7 +1402,10 @@ class _StatusBody extends StatelessWidget {
                         icon: const Icon(Icons.wifi_rounded),
                         label: const Text(
                           'Wi-Fi設定',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _purple,
@@ -1784,30 +1433,25 @@ class _StatusBody extends StatelessWidget {
                         ),
                         child: const Text(
                           'シールを変更',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ],
               ),
-
             ),
-
           ),
-
         ],
-
       ),
-
     );
-
   }
-
 }
 
 class _SosBody extends StatelessWidget {
-
   final Gateway gateway;
 
   final Seal? seal;
@@ -1820,50 +1464,58 @@ class _SosBody extends StatelessWidget {
 
   final VoidCallback onHoldCancel;
 
-  const _SosBody({required this.gateway, required this.seal, required this.childName, required this.onEdit, required this.onHoldStart, required this.onHoldCancel});
+  const _SosBody({
+    required this.gateway,
+    required this.seal,
+    required this.childName,
+    required this.onEdit,
+    required this.onHoldStart,
+    required this.onHoldCancel,
+  });
 
   @override
-
   Widget build(BuildContext context) {
-
     return Padding(
-
       padding: const EdgeInsets.fromLTRB(28, 18, 28, 20),
 
       child: Column(
-
         children: [
-
           _GatewayInfo(gateway: gateway, seal: seal, compact: true),
 
           const SizedBox(height: 22),
 
-          Text('$childName から\nSOSアラートが届きました', textAlign: TextAlign.center, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
+          Text(
+            '$childName から\nSOSアラートが届きました',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+          ),
 
           const SizedBox(height: 18),
 
           SizedBox(
-
             width: double.infinity,
 
             height: 76,
 
             child: FilledButton(
-
               onPressed: onEdit,
 
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFED6E73), foregroundColor: const Color(0xFF7B1518), shape: const RoundedRectangleBorder()),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFED6E73),
+                foregroundColor: const Color(0xFF7B1518),
+                shape: const RoundedRectangleBorder(),
+              ),
 
-              child: const Text('シールを変更', style: TextStyle(fontWeight: FontWeight.bold)),
-
+              child: const Text(
+                'シールを変更',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-
           ),
 
           const Spacer(),
 
           Listener(
-
             onPointerDown: (_) => onHoldStart(),
 
             onPointerUp: (_) => onHoldCancel(),
@@ -1871,7 +1523,6 @@ class _SosBody extends StatelessWidget {
             onPointerCancel: (_) => onHoldCancel(),
 
             child: Container(
-
               width: double.infinity,
 
               padding: const EdgeInsets.symmetric(vertical: 17),
@@ -1880,24 +1531,20 @@ class _SosBody extends StatelessWidget {
 
               decoration: const BoxDecoration(color: Color(0xFFE4E4E4)),
 
-              child: const Text('安全確認完了（アラート解除）\n長押し3秒', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-
+              child: const Text(
+                '安全確認完了（アラート解除）\n長押し3秒',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+              ),
             ),
-
           ),
-
         ],
-
       ),
-
     );
-
   }
-
 }
 
 class _GatewayInfo extends StatelessWidget {
-
   final Gateway gateway;
 
   final Seal? seal;
@@ -1909,7 +1556,6 @@ class _GatewayInfo extends StatelessWidget {
   final Color dividerColor;
 
   const _GatewayInfo({
-
     required this.gateway,
 
     required this.seal,
@@ -1919,35 +1565,47 @@ class _GatewayInfo extends StatelessWidget {
     this.accentColor = Colors.black87,
 
     this.dividerColor = Colors.black26,
-
   });
 
   @override
-
   Widget build(BuildContext context) {
-
     return Row(
-
       crossAxisAlignment: CrossAxisAlignment.start,
 
       children: [
-
         Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '親機登録名',
+                style: TextStyle(
+                  color: accentColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
 
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const SizedBox(height: 22),
 
-            Text('親機登録名', style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
+              Text(
+                'すれ違い　 今日\n　　　　　 累計',
+                style: TextStyle(
+                  color: accentColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
 
-            const SizedBox(height: 22),
+              const SizedBox(height: 28),
 
-            Text('すれ違い　 今日\n　　　　　 累計', style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
-
-            const SizedBox(height: 28),
-
-            Text('配布するシール', style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
-
-          ]),
-
+              Text(
+                '配布するシール',
+                style: TextStyle(
+                  color: accentColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ),
 
         Container(width: 2, height: compact ? 150 : 190, color: dividerColor),
@@ -1955,41 +1613,38 @@ class _GatewayInfo extends StatelessWidget {
         const SizedBox(width: 18),
 
         Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                gateway.name,
+                style: TextStyle(
+                  color: accentColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
 
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const SizedBox(height: 22),
 
-            Text(gateway.name, style: TextStyle(color: accentColor, fontWeight: FontWeight.w700)),
+              Text(AppConfig.useDemoData ? '8 回\n127 回' : '— 回\n— 回'),
 
-            const SizedBox(height: 22),
+              const SizedBox(height: 22),
 
-            Text(
+              Text(seal?.name ?? '未設定'),
 
-              AppConfig.useDemoData ? '8 回\n127 回' : '— 回\n— 回',
+              const SizedBox(height: 8),
 
-            ),
-
-            const SizedBox(height: 22),
-
-            Text(seal?.name ?? '未設定'),
-
-            const SizedBox(height: 8),
-
-            if (seal != null) SealImage(seal: seal!, size: compact ? 58 : 140),
-
-          ]),
-
+              if (seal != null)
+                SealImage(seal: seal!, size: compact ? 58 : 140),
+            ],
+          ),
         ),
-
       ],
-
     );
-
   }
-
 }
 
 class _ErrorView extends StatelessWidget {
-
   final Object? error;
 
   final VoidCallback onRetry;
@@ -1997,65 +1652,42 @@ class _ErrorView extends StatelessWidget {
   final VoidCallback onRegister;
 
   const _ErrorView({
-
     required this.error,
 
     required this.onRetry,
 
     required this.onRegister,
-
   });
 
   @override
-
   Widget build(BuildContext context) {
-
     return Center(
-
       child: Padding(
-
         padding: const EdgeInsets.all(24),
 
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('親機情報を取得できませんでした\n$error', textAlign: TextAlign.center),
 
-          Text('親機情報を取得できませんでした\n$error', textAlign: TextAlign.center),
+            const SizedBox(height: 12),
 
-          const SizedBox(height: 12),
+            FilledButton(onPressed: onRegister, child: const Text('親機を登録')),
 
-          FilledButton(
+            const SizedBox(height: 10),
 
-            onPressed: onRegister,
-
-            child: const Text('親機を登録'),
-
-          ),
-
-          const SizedBox(height: 10),
-
-          OutlinedButton(
-
-            onPressed: onRetry,
-
-            child: const Text('再試行'),
-
-          ),
-
-        ]),
-
+            OutlinedButton(onPressed: onRetry, child: const Text('再試行')),
+          ],
+        ),
       ),
-
     );
-
   }
-
 }
 
 class _AdminData {
-
   final List<Gateway> gateways;
 
   final List<Seal> seals;
 
   const _AdminData({required this.gateways, required this.seals});
-
 }
