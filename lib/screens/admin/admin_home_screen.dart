@@ -368,6 +368,36 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             tooltip: '設置場所を登録・変更',
           ),
 
+          IconButton(
+            onPressed: _sosActive
+                ? null
+                : () async {
+                    try {
+                      final gateways = await ApiService.fetchUserGateways();
+                      if (!mounted || gateways.isEmpty) return;
+
+                      Gateway gateway = gateways.first;
+                      if (_selectedGatewayId != null) {
+                        for (final item in gateways) {
+                          if (item.id == _selectedGatewayId) {
+                            gateway = item;
+                            break;
+                          }
+                        }
+                      }
+
+                      await _configureGatewayWifi(gateway);
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('親機情報を取得できませんでした: $e')),
+                      );
+                    }
+                  },
+            icon: const Icon(Icons.wifi_rounded),
+            tooltip: 'Wi-Fi設定',
+          ),
+
           TextButton.icon(
             onPressed: _sosActive ? null : _registerGateway,
 
@@ -459,7 +489,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     gateway: gateway,
                     seal: selectedSeal,
                     onEdit: () => _openEditor(gateway),
-                    onWifi: () => _configureGatewayWifi(gateway),
                   );
           },
         ),
@@ -1330,13 +1359,11 @@ class _StatusBody extends StatelessWidget {
 
   final VoidCallback onEdit;
 
-  final VoidCallback onWifi;
 
   const _StatusBody({
     required this.gateway,
     required this.seal,
     required this.onEdit,
-    required this.onWifi,
   });
 
   @override
@@ -1391,57 +1418,27 @@ class _StatusBody extends StatelessWidget {
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 860),
-
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 58,
-                      child: OutlinedButton.icon(
-                        onPressed: onWifi,
-                        icon: const Icon(Icons.wifi_rounded),
-                        label: const Text(
-                          'Wi-Fi設定',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _purple,
-                          side: const BorderSide(color: _purple, width: 2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 58,
+                child: FilledButton(
+                  onPressed: onEdit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _purple,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: SizedBox(
-                      height: 58,
-                      child: FilledButton(
-                        onPressed: onEdit,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _purple,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text(
-                          'シールを変更',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                  child: const Text(
+                    'シールを変更',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1585,16 +1582,6 @@ class _GatewayInfo extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 22),
-
-              Text(
-                'すれ違い　 今日\n　　　　　 累計',
-                style: TextStyle(
-                  color: accentColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
               const SizedBox(height: 28),
 
               Text(
@@ -1608,7 +1595,7 @@ class _GatewayInfo extends StatelessWidget {
           ),
         ),
 
-        Container(width: 2, height: compact ? 150 : 190, color: dividerColor),
+        Container(width: 2, height: compact ? 110 : 155, color: dividerColor),
 
         const SizedBox(width: 18),
 
@@ -1624,11 +1611,7 @@ class _GatewayInfo extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 22),
-
-              Text(AppConfig.useDemoData ? '8 回\n127 回' : '— 回\n— 回'),
-
-              const SizedBox(height: 22),
+              const SizedBox(height: 28),
 
               Text(seal?.name ?? '未設定'),
 

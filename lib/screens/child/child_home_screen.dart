@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-// 大会用: 保護者PINを一時的に使用しないためコメントアウト
-// import '../../widgets/pin_code_dialog.dart';
+import '../../widgets/pin_code_dialog.dart';
 import '../parent/parent_home_screen.dart';
 import 'exchange_box_screen.dart';
 import 'mission_screen.dart';
@@ -44,25 +43,18 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
   }
 
   Future<void> _switchToParentMenu() async {
-    // 大会用: マニュアルに合わせて保護者PIN確認を一時的にスキップする。
-    // 大会後に戻せるよう、元のPIN処理はコメントとして残している。
-    // final success = await showDialog<bool>(
-    //   context: context,
-    //   barrierDismissible: false,
-    //   builder: (_) => const PinCodeDialog(correctPin: '1234'),
-    // );
-    // if (success == true && mounted) {
-    //   Navigator.push(
-    //     context,
-    //     MaterialPageRoute(builder: (_) => const ParentHomeScreen()),
-    //   );
-    // }
-
-    if (!mounted) return;
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ParentHomeScreen()),
+    final success = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PinCodeDialog(correctPin: '1234'),
     );
+
+    if (success == true && mounted) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ParentHomeScreen()),
+      );
+    }
   }
 
   Future<void> _open(Widget screen) async {
