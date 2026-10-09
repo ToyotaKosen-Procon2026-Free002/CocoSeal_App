@@ -216,7 +216,7 @@ class _SealBookScreenState extends State<SealBookScreen> {
 
   Widget _buildPlacedSticker(PlacedSticker sticker) {
     final selected = sticker.id == _selectedStickerId;
-    const handleSize = 26.0;
+    const handleSize = 48.0;
     return Positioned(
       left: sticker.position.dx,
       top: sticker.position.dy,
@@ -244,7 +244,7 @@ class _SealBookScreenState extends State<SealBookScreen> {
           ),
           if (selected) ...[
             Positioned(
-              top: -38,
+              top: -62,
               left: sticker.size / 2 - handleSize / 2,
               child: Column(children: [
                 GestureDetector(
@@ -286,7 +286,7 @@ class _SealBookScreenState extends State<SealBookScreen> {
         border: Border.all(color: color, width: 2),
         boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 3)],
       ),
-      child: Icon(icon, size: 15, color: color),
+      child: Icon(icon, size: 25, color: color),
     );
   }
 

@@ -320,50 +320,41 @@ class _ExchangeBoxScreenState extends State<ExchangeBoxScreen> {
 
                           const SizedBox(height: 8),
 
-                          SizedBox(
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              // タブレットの横幅いっぱいに20枠（10列×2段）を広げる。
+                              const columns = 10;
+                              const rows = 2;
+                              const gap = 6.0;
+                              final slotWidth =
+                                  (constraints.maxWidth - gap * (columns - 1)) / columns;
+                              final gridHeight = slotWidth * rows + gap * (rows - 1);
 
-                            height: 170,
-
-                            child: GridView.builder(
-
-                              scrollDirection: Axis.horizontal,
-
-                              itemCount: _capacity,
-
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-
-                                crossAxisCount: 2,
-
-                                mainAxisExtent: 82,
-
-                                crossAxisSpacing: 6,
-
-                                mainAxisSpacing: 6,
-
-                              ),
-
-                              itemBuilder: (context, index) {
-
-                                if (index >= selected.length) return const _EmptySlot();
-
-                                final item = selected[index];
-
-                                final seal = catalogById[item.sealId];
-
-                                if (seal == null) return const _EmptySlot();
-
-                                return _SelectedSealTile(
-
-                                  seal: seal,
-
-                                  onRemove: () => _removeSeal(item.id),
-
-                                );
-
-                              },
-
-                            ),
-
+                              return SizedBox(
+                                width: double.infinity,
+                                height: gridHeight,
+                                child: GridView.builder(
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: _capacity,
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: columns,
+                                    crossAxisSpacing: gap,
+                                    mainAxisSpacing: gap,
+                                    childAspectRatio: 1,
+                                  ),
+                                  itemBuilder: (context, index) {
+                                    if (index >= selected.length) return const _EmptySlot();
+                                    final item = selected[index];
+                                    final seal = catalogById[item.sealId];
+                                    if (seal == null) return const _EmptySlot();
+                                    return _SelectedSealTile(
+                                      seal: seal,
+                                      onRemove: () => _removeSeal(item.id),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
                           ),
 
                           const SizedBox(height: 8),

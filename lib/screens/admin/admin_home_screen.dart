@@ -437,6 +437,24 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
         elevation: 0,
 
+        leadingWidth: 118,
+        leading: TextButton.icon(
+          onPressed: () => logoutAndReturnToLogin(context),
+          icon: Icon(
+            Icons.logout_rounded,
+            size: 18,
+            color: _sosActive ? Colors.black87 : Colors.white,
+          ),
+          label: Text(
+            'ログアウト',
+            softWrap: false,
+            style: TextStyle(
+              color: _sosActive ? Colors.black87 : Colors.white,
+              fontSize: 12,
+            ),
+          ),
+        ),
+
         actions: [
 
           IconButton(
@@ -476,40 +494,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             label: Text(
 
               '親機を登録',
-
-              softWrap: false,
-
-              style: TextStyle(
-
-                color: _sosActive ? Colors.black87 : Colors.white,
-
-                fontSize: 12,
-
-              ),
-
-            ),
-
-          ),
-
-          const SizedBox(width: 8),
-
-          TextButton.icon(
-
-            onPressed: () => logoutAndReturnToLogin(context),
-
-            icon: Icon(
-
-              Icons.logout_rounded,
-
-              size: 18,
-
-              color: _sosActive ? Colors.black87 : Colors.white,
-
-            ),
-
-            label: Text(
-
-              'ログアウト',
 
               softWrap: false,
 
