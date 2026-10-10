@@ -42,6 +42,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     final endAt = DateTime.now();
     final startAt = endAt.subtract(const Duration(days: 7));
     final logs = <_ChildActivityLog>[];
+
     for (final device in devices) {
       final deviceLogs = await ApiService.fetchNearbyCommunications(
         deviceId: device.id,
@@ -54,6 +55,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         ),
       );
     }
+
     if (AppConfig.useDemoData && devices.isNotEmpty) {
       logs.add(
         _ChildActivityLog.sos(
@@ -61,7 +63,37 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           timeStamp: endAt.subtract(const Duration(minutes: 18)),
         ),
       );
+    } else {
+      // SOSログの取得に失敗しても、すれ違い・親機通過ログは表示する。
+      try {
+        for (final device in devices) {
+          final sosLogs = await ApiService.fetchSosLogs(
+            deviceId: device.id,
+            startAt: startAt,
+            endAt: endAt,
+          );
+
+          for (final sos in sosLogs) {
+            final rawTimestamp =
+                sos['trigger_timestamp'] ?? sos['receive_timestamp'];
+            if (rawTimestamp == null) continue;
+
+            final timestamp = DateTime.tryParse(rawTimestamp.toString());
+            if (timestamp == null) continue;
+
+            logs.add(
+              _ChildActivityLog.sos(
+                device: device,
+                timeStamp: timestamp,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('SOSログ取得エラー（通常の行動ログは表示を継続）: $e');
+      }
     }
+
     logs.sort((a, b) => b.timeStamp.compareTo(a.timeStamp));
     return _ActivityLogData(devices: devices, logs: logs);
   }
@@ -361,7 +393,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            '親機通過時の自動通知',
+                            'SOS発生時の自動通知',
                             style: TextStyle(
                               fontSize: 12,
                               color: _isApproachNotifEnabled ? Colors.black87 : Colors.black38,

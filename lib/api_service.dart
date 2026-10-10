@@ -532,6 +532,42 @@ _decode(response);
 
   }
 
+  /// 指定した子機のSOS履歴を取得する
+  static Future<List<Map<String, dynamic>>> fetchSosLogs({
+    required String deviceId,
+    required DateTime startAt,
+    required DateTime endAt,
+  }) async {
+    if (AppConfig.useDemoData) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    final request = http.Request(
+      'GET',
+      Uri.parse('$baseUrl/users/sos_log'),
+    );
+
+    request.headers.addAll(await _getHeaders());
+
+    request.body = jsonEncode({
+      'device_id': deviceId,
+      'start_at': startAt.toUtc().toIso8601String(),
+      'end_at': endAt.toUtc().toIso8601String(),
+    });
+
+    final response = await _send(request);
+    final decoded = _decode(response);
+
+    if (decoded is! List) {
+      throw const ApiException('SOSログの取得結果が不正です。');
+    }
+
+    return decoded
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
   /// シール一覧を取得する
 
   static Future<List<Seal>> fetchSeals() async {

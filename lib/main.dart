@@ -3,21 +3,92 @@ import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+final FlutterLocalNotificationsPlugin _localNotifications =
+    FlutterLocalNotificationsPlugin();
+
+const AndroidNotificationChannel _notificationChannel =
+    AndroidNotificationChannel(
+  'coco_seal_alerts',
+  'ココ・シール通知',
+  description: 'SOSやバッテリー低下などの重要な通知',
+  importance: Importance.max,
+);
+
+Future<void> _initializeNotifications() async {
+  const androidSettings =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const initializationSettings = InitializationSettings(
+    android: androidSettings,
+  );
+
+  await _localNotifications.initialize(initializationSettings);
+
+  final androidPlugin =
+      _localNotifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+
+  await androidPlugin?.createNotificationChannel(_notificationChannel);
+  await androidPlugin?.requestNotificationsPermission();
+}
+
+Future<void> _showForegroundNotification(RemoteMessage message) async {
+  final notification = message.notification;
+
+  final title =
+      notification?.title ?? message.data['title']?.toString() ?? 'ココ・シール';
+  final body = notification?.body ??
+      message.data['body']?.toString() ??
+      message.data['message']?.toString() ??
+      '新しい通知があります';
+
+  await _localNotifications.show(
+    message.messageId?.hashCode ??
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    title,
+    body,
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        _notificationChannel.id,
+        _notificationChannel.name,
+        channelDescription: _notificationChannel.description,
+        importance: Importance.max,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.alarm,
+      ),
+    ),
+    payload: message.data.isEmpty ? null : message.data.toString(),
+  );
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Web環境などでService Workerがなくてもアプリが止まらないよう try-catch で保護
   try {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission();
-    String? token = await messaging.getToken();
-    print('FCM Token: $token');
+    final messaging = FirebaseMessaging.instance;
+
+    await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    await _initializeNotifications();
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _showForegroundNotification(message);
+    });
+
+    final token = await messaging.getToken();
+    debugPrint('FCM token acquired: ${token != null}');
   } catch (e) {
-    print('FirebaseMessaging 初期化スキップ (Web環境等): $e');
+    debugPrint('FirebaseMessaging 初期化スキップ (Web環境等): $e');
   }
 
   runApp(const CocoSealApp());
@@ -32,7 +103,7 @@ class CocoSealApp extends StatelessWidget {
       title: 'ココ・シール',
       theme: ThemeData(
         primarySwatch: Colors.pink,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink), // ColorSchemeを追加
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink),
         useMaterial3: true,
       ),
       home: const AuthGate(),
